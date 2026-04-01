@@ -1,26 +1,235 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Meridian Design System v3.0 — Light Mode
+
+   Palette: White + Green accent (#188038)
+   Typography: Medium-inspired sizing, Inter + Instrument Serif
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Surfaces ── */
+  --bg-primary: 255 255 255;       /* #FFFFFF  — page                     */
+  --bg-secondary: 255 255 255;     /* #FFFFFF  — cards (shadow for depth)  */
+  --bg-tertiary: 246 248 250;      /* #F6F8FA  — raised, table headers     */
+  --bg-surface: 246 248 250;       /* #F6F8FA  — interactive surfaces      */
+  --bg-hover: 240 243 246;         /* #F0F3F6  — hover states              */
+
+  /* ── Text ── */
+  --text-primary: 31 35 40;        /* #1F2328                              */
+  --text-secondary: 101 109 118;   /* #656D76                              */
+  --text-muted: 139 148 158;       /* #8B949E                              */
+  --text-disabled: 177 186 196;    /* #B1BAC4                              */
+
+  /* ── Accent: Green (#188038 — Prof Jin approved) ── */
+  --accent: 24 128 56;             /* #188038                              */
+  --accent-strong: 17 99 41;       /* #116329                              */
+  --accent-weak: 45 164 78;        /* #2DA44E                              */
+
+  /* ── Cooperation ── */
+  --cooperation: 26 127 55;        /* #1A7F37                              */
+  --cooperation-strong: 17 99 41;
+  --cooperation-weak: 45 164 78;   /* #2DA44E                              */
+
+  /* ── Conflict ── */
+  --conflict: 207 34 46;           /* #CF222E                              */
+  --conflict-strong: 164 14 38;
+  --conflict-weak: 235 88 82;      /* #EB5852                              */
+
+  /* ── Neutral ── */
+  --neutral: 101 109 118;          /* #656D76                              */
+
+  /* ── Warning ── */
+  --warning: 191 135 0;            /* #BF8700                              */
+
+  /* ── Borders ── */
+  --border: 208 215 222;           /* #D0D7DE                              */
+  --border-strong: 175 184 193;    /* #AFB8C1                              */
+
+  /* ── Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 }
 
+/* ── Tailwind v4 Theme ── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-primary: rgb(var(--bg-primary));
+  --color-bg-secondary: rgb(var(--bg-secondary));
+  --color-bg-tertiary: rgb(var(--bg-tertiary));
+  --color-bg-surface: rgb(var(--bg-surface));
+  --color-bg-hover: rgb(var(--bg-hover));
+
+  --color-text-primary: rgb(var(--text-primary));
+  --color-text-secondary: rgb(var(--text-secondary));
+  --color-text-muted: rgb(var(--text-muted));
+  --color-text-disabled: rgb(var(--text-disabled));
+
+  --color-accent: rgb(var(--accent));
+  --color-accent-strong: rgb(var(--accent-strong));
+  --color-accent-weak: rgb(var(--accent-weak));
+
+  --color-cooperation: rgb(var(--cooperation));
+  --color-cooperation-weak: rgb(var(--cooperation-weak));
+  --color-conflict: rgb(var(--conflict));
+  --color-conflict-weak: rgb(var(--conflict-weak));
+  --color-neutral: rgb(var(--neutral));
+  --color-warning: rgb(var(--warning));
+
+  --color-border: rgb(var(--border));
+  --color-border-strong: rgb(var(--border-strong));
+
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair-display);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ── */
+* {
+  border-color: rgb(var(--border));
+}
+
+html {
+  background: rgb(var(--bg-primary));
+  color: rgb(var(--text-primary));
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: rgb(var(--bg-primary));
+  color: rgb(var(--text-primary));
+  font-size: 1rem;         /* 16px — Medium-inspired */
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--border-strong));
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgb(var(--accent) / 0.15);
+  color: rgb(var(--text-primary));
+}
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+/* ── Components ── */
+
+/* Card — white with subtle shadow for light mode elevation */
+.data-card {
+  background: rgb(var(--bg-secondary));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.data-card:hover {
+  border-color: rgb(var(--border-strong));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Glass panel (navbar) */
+.glass-panel {
+  background: rgb(var(--bg-primary) / 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Score typography */
+.score-value {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+}
+
+/* Accent text gradient */
+.text-gradient {
+  background: linear-gradient(135deg, rgb(var(--accent-weak)), rgb(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Expandable learn-more */
+.learn-more summary {
+  cursor: pointer;
+  color: rgb(var(--text-muted));
+  font-size: 0.8125rem;
+  transition: color 0.15s;
+  list-style: none;
+}
+.learn-more summary::-webkit-details-marker {
+  display: none;
+}
+.learn-more summary:hover {
+  color: rgb(var(--accent-weak));
+}
+.learn-more[open] summary {
+  color: rgb(var(--accent));
+  margin-bottom: 12px;
+}
+
+/* Pulse animation */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Timeline slider */
+.timeline-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--border));
+  outline: none;
+  cursor: pointer;
+}
+.timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  border: 2px solid rgb(var(--bg-primary));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.timeline-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.timeline-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  border: 2px solid rgb(var(--bg-primary));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
