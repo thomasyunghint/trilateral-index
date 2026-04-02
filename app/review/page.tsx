@@ -12,6 +12,7 @@ import {
   FileText,
   ExternalLink,
   ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -622,6 +623,11 @@ export default function ReviewPage() {
                     <span className="ml-2 normal-case tracking-normal">
                       (confidence: {(article.llm.confidence * 100).toFixed(0)}%)
                     </span>
+                    {article.llm.confidence < 0.65 && (
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider">
+                        <AlertTriangle size={8} /> Low confidence
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-text-secondary leading-relaxed">
                     {article.llm.rationale}

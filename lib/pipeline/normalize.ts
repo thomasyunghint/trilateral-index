@@ -55,16 +55,13 @@ export function normalizeTradeFlows(
     return (actual - baseline) / denominator;
   });
 
-  // Step 3: Min-max normalize to [-100, +100]
-  const minDev = Math.min(...deviations);
-  const maxDev = Math.max(...deviations);
-  const range = maxDev - minDev;
+  // Step 3: Absolute-scale normalization to [-100, +100]
+  // Deviation already represents fractional distance from baseline.
+  // Multiply by scale factor and clamp — preserves sign (positive = cooperation).
+  const SCALE_FACTOR = 50; // 1.0 deviation unit → 50 score points
 
   const scores: NormalizedTradeScore[] = withGrowth.map((flow, i) => {
-    const normalized =
-      range > 0
-        ? ((deviations[i] - minDev) / range) * 200 - 100  // maps to [-100, +100]
-        : 0;
+    const normalized = deviations[i] * SCALE_FACTOR;
 
     return {
       pair,

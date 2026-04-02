@@ -135,7 +135,12 @@ export const QUARTERLY_PAIR_SCORES: {
   { period: "2025-Q2", scores: { "CN-US": -35.3, "CN-EU": -10.5, "US-EU": 35.2 } },
   { period: "2025-Q3", scores: { "CN-US": -38.0, "CN-EU": -13.0, "US-EU": 35.8 } },
   { period: "2025-Q4", scores: { "CN-US": -40.2, "CN-EU": -14.8, "US-EU": 35.2 } },
-  { period: "2026-Q1", scores: { "CN-US": -44.5, "CN-EU": -17.0, "US-EU": 36.3 } },
+  // Last entry derived from MOCK_PAIRS — single source of truth
+  { period: "2026-Q1", scores: {
+    "CN-US": MOCK_PAIRS["CN-US"].overallScore,
+    "CN-EU": MOCK_PAIRS["CN-EU"].overallScore,
+    "US-EU": MOCK_PAIRS["US-EU"].overallScore,
+  } },
 ];
 
 // Monthly overall scores per pair (Apr 2024 – Mar 2026)
@@ -170,8 +175,33 @@ export const MONTHLY_PAIR_SCORES: {
 ];
 
 /**
+ * Text/hard ratio from MOCK_PAIRS latest period, used to decompose
+ * historical composites into consistent text and hard components.
+ * ratio = textScore / hardDataScore for buckets with hard data.
+ */
+const TEXT_HARD_RATIOS: Record<BilateralPair, Partial<Record<Bucket, number>>> = {
+  "CN-US": {
+    trade: -51.3 / -38,        // 1.35
+    investment: -47.5 / -60,   // 0.79
+    finance: -34 / -18,        // 1.89
+  },
+  "CN-EU": {
+    trade: -21.3 / -8,         // 2.66
+    investment: -25 / -30,     // 0.83
+    finance: -4 / 12,          // -0.33
+  },
+  "US-EU": {
+    trade: 13.3 / 30,          // 0.44
+    investment: 27.5 / 40,     // 0.69
+    finance: 46 / 58,          // 0.79
+  },
+};
+
+/**
  * Reconstruct bucket scores for a given historical quarter index.
- * Decomposes composite into text/hard using blend weights.
+ * Decomposes composite into text/hard using blend weights and the
+ * text/hard ratio from MOCK_PAIRS, ensuring algebraic consistency:
+ *   composite = textScore * w_text + hardDataScore * w_hard
  */
 export function getBucketScoresAtIndex(
   quarterIdx: number,
@@ -185,12 +215,19 @@ export function getBucketScoresAtIndex(
   for (const pair of pairs) {
     const ts = getMockTimeSeries(pair, bucket);
     const composite = ts[quarterIdx]?.score ?? 0;
-    const hardDataScore = hasHard
-      ? Math.round(composite * 0.9 * 10) / 10
-      : null;
-    const textScore = hasHard
-      ? Math.round(((composite - hardDataScore! * w.hard) / w.text) * 10) / 10
-      : composite;
+
+    let hardDataScore: number | null = null;
+    let textScore: number;
+
+    if (hasHard) {
+      // Algebraic decomposition: given composite and ratio r = text/hard,
+      // composite = r*hard*w_text + hard*w_hard → hard = composite / (r*w_text + w_hard)
+      const r = TEXT_HARD_RATIOS[pair][bucket] ?? 1;
+      hardDataScore = Math.round((composite / (r * w.text + w.hard)) * 10) / 10;
+      textScore = Math.round((r * hardDataScore) * 10) / 10;
+    } else {
+      textScore = composite;
+    }
 
     result[pair] = {
       bucket,

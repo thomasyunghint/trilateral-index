@@ -50,15 +50,17 @@ function parseSDMXResponse(
 
   if (!json.dataSets?.[0]?.observations) return observations;
 
-  // Find the time dimension to map observation keys → period labels
-  const timeDim = json.structure?.dimensions?.observation?.find(
-    (d) => d.id === "TIME_PERIOD",
-  );
+  // Find TIME_PERIOD dimension index for multi-dimensional key parsing
+  // SDMX keys are colon-separated dimension indices, e.g. "0:0:0:3"
+  const obsDims = json.structure?.dimensions?.observation ?? [];
+  const timeDimIdx = obsDims.findIndex((d) => d.id === "TIME_PERIOD");
+  const timeDim = timeDimIdx >= 0 ? obsDims[timeDimIdx] : undefined;
   const periodValues = timeDim?.values ?? [];
 
   const obs = json.dataSets[0].observations;
   for (const [key, values] of Object.entries(obs)) {
-    const periodIdx = parseInt(key, 10);
+    const keyParts = key.split(":");
+    const periodIdx = parseInt(keyParts[timeDimIdx >= 0 ? timeDimIdx : 0], 10);
     const period = periodValues[periodIdx]?.id;
     const value = values[0];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Bucket, BilateralPair, BucketScore } from "@/lib/types";
 import { BUCKET_LABELS } from "@/lib/types";
 import { ScoreBadge, getScoreColor } from "./score-badge";
@@ -128,6 +128,7 @@ export function BucketRow({ bucket, scores, granularity: globalGranularity = "Q"
   const [expanded, setExpanded] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [localGranularity, setLocalGranularity] = useState<Granularity>(globalGranularity);
+  useEffect(() => { setLocalGranularity(globalGranularity); }, [globalGranularity]);
   const { mode } = useMode();
   const Icon = BUCKET_ICONS[bucket];
   const weights = BUCKET_WEIGHTS[bucket];

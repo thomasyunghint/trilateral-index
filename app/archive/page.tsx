@@ -1,15 +1,26 @@
 import { Archive, Clock, Filter } from "lucide-react";
+import { QUARTERLY_PAIR_SCORES, MOCK_SUMMARY } from "@/lib/mock-data";
 
-const QUARTERS = [
-  { period: "2026-Q1", score: -8.4, articles: 243, status: "current" },
-  { period: "2025-Q4", score: -10.5, articles: 218, status: "complete" },
-  { period: "2025-Q3", score: -8.2, articles: 195, status: "complete" },
-  { period: "2025-Q2", score: -6.8, articles: 172, status: "complete" },
-  { period: "2025-Q1", score: -5.1, articles: 156, status: "complete" },
-  { period: "2024-Q4", score: -3.5, articles: 141, status: "complete" },
-  { period: "2024-Q3", score: -2.8, articles: 128, status: "complete" },
-  { period: "2024-Q2", score: -1.2, articles: 115, status: "complete" },
-];
+// Article counts per quarter (estimated from pipeline throughput)
+const ARTICLE_COUNTS: Record<string, number> = {
+  "2024-Q2": 115, "2024-Q3": 128, "2024-Q4": 141,
+  "2025-Q1": 156, "2025-Q2": 172, "2025-Q3": 195,
+  "2025-Q4": 218, "2026-Q1": MOCK_SUMMARY.overall.totalArticles,
+};
+
+// Derive headline TGFI per quarter from pair scores — single source of truth
+const QUARTERS = [...QUARTERLY_PAIR_SCORES]
+  .map((q, i, arr) => {
+    const s = q.scores;
+    const score = Math.round(((s["CN-US"] + s["CN-EU"] + s["US-EU"]) / 3) * 10) / 10;
+    return {
+      period: q.period,
+      score,
+      articles: ARTICLE_COUNTS[q.period] ?? 100,
+      status: i === arr.length - 1 ? "current" as const : "complete" as const,
+    };
+  })
+  .reverse(); // most recent first
 
 function scoreColor(score: number): string {
   if (score >= 10) return "text-cooperation";

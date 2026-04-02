@@ -143,7 +143,10 @@ export function computeCorrelation(
   for (const tgfi of tgfiScores) {
     // Find ETF period that is `lag` months after TGFI period
     const tgfiIdx = etfPeriods.indexOf(tgfi.period);
-    if (tgfiIdx === -1) continue;
+    if (tgfiIdx === -1) {
+      console.warn(`[backtest] TGFI period ${tgfi.period} not in ETF data for ${etfSymbol}`);
+      continue;
+    }
 
     const etfIdx = tgfiIdx + lag;
     if (etfIdx < 0 || etfIdx >= etfPeriods.length) continue;
@@ -240,7 +243,10 @@ export function computeHitRate(
 
   for (const tgfi of tgfiScores) {
     const tgfiIdx = etfPeriods.indexOf(tgfi.period);
-    if (tgfiIdx === -1) continue;
+    if (tgfiIdx === -1) {
+      console.warn(`[backtest] TGFI period ${tgfi.period} not in ETF data for ${etfSymbol}`);
+      continue;
+    }
 
     const etfIdx = tgfiIdx + lag;
     if (etfIdx < 0 || etfIdx >= etfPeriods.length) continue;

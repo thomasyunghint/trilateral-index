@@ -89,12 +89,13 @@ export default function IndexPage() {
   const currentPeriod = timelineData[safeIdx]?.period ?? data.period;
 
   // Timeline-aware KPI scores
-  const currentScores = timelineData[safeIdx]?.scores;
+  const defaultScores = { "CN-US": 0, "CN-EU": 0, "US-EU": 0 } as Record<BilateralPair, number>;
+  const currentScores = timelineData[safeIdx]?.scores ?? defaultScores;
   const headlineScore = isLive
     ? data.overall.score
     : Math.round(((currentScores["CN-US"] + currentScores["CN-EU"] + currentScores["US-EU"]) / 3) * 10) / 10;
   const prevIdx = Math.max(0, safeIdx > 0 ? safeIdx - 1 : 0);
-  const prevScores = timelineData[prevIdx]?.scores;
+  const prevScores = timelineData[prevIdx]?.scores ?? defaultScores;
   const prevHeadline = (prevScores["CN-US"] + prevScores["CN-EU"] + prevScores["US-EU"]) / 3;
   const headlineDelta = safeIdx > 0
     ? Math.round((headlineScore - prevHeadline) * 10) / 10
@@ -181,7 +182,7 @@ export default function IndexPage() {
               </div>
 
               {/* Bilateral Pair Cards */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {(["CN-US", "CN-EU", "US-EU"] as BilateralPair[]).map((pair) => {
                   const isSelected = selectedPair === pair;
                   return (

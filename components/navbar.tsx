@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMode } from "./mode-context";
-import { Activity, BookOpen, Archive, Database, FileCheck, BarChart3 } from "lucide-react";
+import { Activity, BookOpen, Archive, Database, FileCheck, BarChart3, Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Index", icon: Activity },
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const { mode } = useMode();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border glass-panel">
@@ -33,8 +35,8 @@ export function Navbar() {
           )}
         </Link>
 
-        {/* Navigation */}
-        <nav className="flex items-center gap-0.5">
+        {/* Desktop navigation */}
+        <nav className="hidden sm:flex items-center gap-0.5">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
@@ -51,18 +53,54 @@ export function Navbar() {
                 `}
               >
                 <Icon size={14} strokeWidth={2} />
-                <span className="hidden sm:inline">{label}</span>
+                <span>{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Period indicator */}
-        <div className="flex items-center gap-1.5 text-xs text-text-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-cooperation pulse-dot" />
-          <span className="font-mono">2026-Q1</span>
+        {/* Mobile: hamburger + period */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-cooperation pulse-dot" />
+            <span className="font-mono">2026-Q1</span>
+          </div>
+          <button
+            className="sm:hidden flex items-center justify-center h-8 w-8 rounded-md text-text-muted hover:text-text-secondary hover:bg-bg-hover/50 transition-colors"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle navigation"
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <nav className="sm:hidden border-t border-border bg-bg-primary px-4 py-2">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className={`
+                  flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors
+                  ${
+                    isActive
+                      ? "text-text-primary bg-bg-surface"
+                      : "text-text-muted hover:text-text-secondary hover:bg-bg-hover/50"
+                  }
+                `}
+              >
+                <Icon size={14} strokeWidth={2} />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </header>
   );
 }
