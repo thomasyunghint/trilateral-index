@@ -16,27 +16,44 @@ function scoreToDirection(score: number): Direction {
   return "Strong Conflict";
 }
 
+/** Text-vs-hard blending weights per bucket */
+export const BLEND_WEIGHTS: Record<Bucket, { text: number; hard: number }> = {
+  trade: { text: 0.3, hard: 0.7 },
+  investment: { text: 0.4, hard: 0.6 },
+  technology: { text: 0.6, hard: 0.4 },
+  finance: { text: 0.25, hard: 0.75 },
+  leverage: { text: 0.8, hard: 0.2 },
+  policy: { text: 0.5, hard: 0.5 },
+};
+
+/**
+ * Create a BucketScore from independent text and hard data scores.
+ * composite = textScore * w_text + hardDataScore * w_hard (when hard data exists).
+ */
 function makeBucketScore(
   bucket: Bucket,
-  composite: number,
+  textScore: number,
   nArticles: number,
-  hardData: number | null = null,
+  hardDataScore: number | null = null,
   convergence: number | null = null,
 ): BucketScore {
+  const w = BLEND_WEIGHTS[bucket];
+  const composite =
+    hardDataScore !== null
+      ? Math.round((textScore * w.text + hardDataScore * w.hard) * 10) / 10
+      : textScore;
   return {
     bucket,
     composite,
-    textScore: hardData !== null ? composite * 1.2 : composite,
-    hardDataScore: hardData,
+    textScore,
+    hardDataScore,
     convergence,
     nArticles,
     direction: scoreToDirection(composite),
   };
 }
 
-function makePairSummary(
-  buckets: Record<Bucket, BucketScore>,
-): PairSummary {
+function makePairSummary(buckets: Record<Bucket, BucketScore>): PairSummary {
   const vals = Object.values(buckets);
   const avg = vals.reduce((s, b) => s + b.composite, 0) / vals.length;
   const best = vals.reduce((a, b) => (b.composite > a.composite ? b : a));
@@ -50,39 +67,59 @@ function makePairSummary(
   };
 }
 
+// Build pairs first so overall score is derived, not hardcoded
+const MOCK_PAIRS: TGFISummary["pairs"] = {
+  "CN-US": makePairSummary({
+    trade: makeBucketScore("trade", -51.3, 18, -38, 0.82),
+    investment: makeBucketScore("investment", -47.5, 12, -60, 0.91),
+    technology: makeBucketScore("technology", -68, 24, null, null),
+    finance: makeBucketScore("finance", -34, 8, -18, 0.88),
+    leverage: makeBucketScore("leverage", -45, 15, null, null),
+    policy: makeBucketScore("policy", -35, 20, null, null),
+  }),
+  "CN-EU": makePairSummary({
+    trade: makeBucketScore("trade", -21.3, 14, -8, 0.85),
+    investment: makeBucketScore("investment", -25, 9, -30, 0.95),
+    technology: makeBucketScore("technology", -35, 16, null, null),
+    finance: makeBucketScore("finance", -4, 5, 12, 0.87),
+    leverage: makeBucketScore("leverage", -20, 11, null, null),
+    policy: makeBucketScore("policy", -15, 13, null, null),
+  }),
+  "US-EU": makePairSummary({
+    trade: makeBucketScore("trade", 13.3, 10, 30, 0.9),
+    investment: makeBucketScore("investment", 27.5, 7, 40, 0.92),
+    technology: makeBucketScore("technology", 45, 12, null, null),
+    finance: makeBucketScore("finance", 46, 6, 58, 0.96),
+    leverage: makeBucketScore("leverage", 18, 8, null, null),
+    policy: makeBucketScore("policy", 40, 15, null, null),
+  }),
+};
+
+// Derive headline TGFI from pair averages (no more hardcoded -12.8)
+const overallAvg =
+  (MOCK_PAIRS["CN-US"].overallScore +
+    MOCK_PAIRS["CN-EU"].overallScore +
+    MOCK_PAIRS["US-EU"].overallScore) /
+  3;
+
+const totalArticles = (["CN-US", "CN-EU", "US-EU"] as BilateralPair[]).reduce(
+  (sum, pair) =>
+    sum +
+    Object.values(MOCK_PAIRS[pair].buckets).reduce(
+      (s, b) => s + b.nArticles,
+      0,
+    ),
+  0,
+);
+
 export const MOCK_SUMMARY: TGFISummary = {
   period: "2026-Q1",
   computedAt: "2026-04-01T12:00:00Z",
-  pairs: {
-    "CN-US": makePairSummary({
-      trade: makeBucketScore("trade", -42, 18, -38, 0.82),
-      investment: makeBucketScore("investment", -55, 12, -60, 0.91),
-      technology: makeBucketScore("technology", -68, 24, null, null),
-      finance: makeBucketScore("finance", -22, 8, -18, 0.88),
-      leverage: makeBucketScore("leverage", -45, 15, null, null),
-      policy: makeBucketScore("policy", -35, 20, null, null),
-    }),
-    "CN-EU": makePairSummary({
-      trade: makeBucketScore("trade", -12, 14, -8, 0.85),
-      investment: makeBucketScore("investment", -28, 9, -30, 0.95),
-      technology: makeBucketScore("technology", -35, 16, null, null),
-      finance: makeBucketScore("finance", 8, 5, 12, 0.87),
-      leverage: makeBucketScore("leverage", -20, 11, null, null),
-      policy: makeBucketScore("policy", -15, 13, null, null),
-    }),
-    "US-EU": makePairSummary({
-      trade: makeBucketScore("trade", 25, 10, 30, 0.9),
-      investment: makeBucketScore("investment", 35, 7, 40, 0.92),
-      technology: makeBucketScore("technology", 45, 12, null, null),
-      finance: makeBucketScore("finance", 55, 6, 58, 0.96),
-      leverage: makeBucketScore("leverage", 18, 8, null, null),
-      policy: makeBucketScore("policy", 40, 15, null, null),
-    }),
-  },
+  pairs: MOCK_PAIRS,
   overall: {
-    score: -12.8,
-    direction: "Neutral",
-    totalArticles: 243,
+    score: Math.round(overallAvg * 10) / 10,
+    direction: scoreToDirection(overallAvg),
+    totalArticles,
   },
 };
 
@@ -106,7 +143,6 @@ export const MONTHLY_PAIR_SCORES: {
   period: string;
   scores: Record<BilateralPair, number>;
 }[] = [
-  // 2024
   { period: "2024-04", scores: { "CN-US": -21.0, "CN-EU": -0.5, "US-EU": 40.2 } },
   { period: "2024-05", scores: { "CN-US": -23.1, "CN-EU": -1.2, "US-EU": 39.8 } },
   { period: "2024-06", scores: { "CN-US": -25.8, "CN-EU": -3.4, "US-EU": 38.5 } },
@@ -116,7 +152,6 @@ export const MONTHLY_PAIR_SCORES: {
   { period: "2024-10", scores: { "CN-US": -29.5, "CN-EU": -5.8, "US-EU": 36.8 } },
   { period: "2024-11", scores: { "CN-US": -30.8, "CN-EU": -6.5, "US-EU": 36.2 } },
   { period: "2024-12", scores: { "CN-US": -33.1, "CN-EU": -7.8, "US-EU": 35.1 } },
-  // 2025
   { period: "2025-01", scores: { "CN-US": -32.0, "CN-EU": -8.5, "US-EU": 35.0 } },
   { period: "2025-02", scores: { "CN-US": -33.2, "CN-EU": -9.5, "US-EU": 34.5 } },
   { period: "2025-03", scores: { "CN-US": -33.0, "CN-EU": -9.7, "US-EU": 34.8 } },
@@ -129,15 +164,14 @@ export const MONTHLY_PAIR_SCORES: {
   { period: "2025-10", scores: { "CN-US": -39.0, "CN-EU": -14.0, "US-EU": 35.8 } },
   { period: "2025-11", scores: { "CN-US": -40.5, "CN-EU": -15.2, "US-EU": 35.0 } },
   { period: "2025-12", scores: { "CN-US": -41.0, "CN-EU": -15.0, "US-EU": 34.8 } },
-  // 2026
   { period: "2026-01", scores: { "CN-US": -42.3, "CN-EU": -15.8, "US-EU": 35.5 } },
   { period: "2026-02", scores: { "CN-US": -43.8, "CN-EU": -16.5, "US-EU": 36.0 } },
   { period: "2026-03", scores: { "CN-US": -44.5, "CN-EU": -17.0, "US-EU": 36.3 } },
 ];
 
 /**
- * Reconstruct bucket scores for a given historical period index.
- * Uses the per-bucket time series to look up the score at that quarter index.
+ * Reconstruct bucket scores for a given historical quarter index.
+ * Decomposes composite into text/hard using blend weights.
  */
 export function getBucketScoresAtIndex(
   quarterIdx: number,
@@ -145,27 +179,33 @@ export function getBucketScoresAtIndex(
 ): Record<BilateralPair, BucketScore> {
   const pairs: BilateralPair[] = ["CN-US", "CN-EU", "US-EU"];
   const result = {} as Record<BilateralPair, BucketScore>;
+  const w = BLEND_WEIGHTS[bucket];
+  const hasHard = ["trade", "investment", "finance"].includes(bucket);
+
   for (const pair of pairs) {
     const ts = getMockTimeSeries(pair, bucket);
-    const score = ts[quarterIdx]?.score ?? 0;
+    const composite = ts[quarterIdx]?.score ?? 0;
+    const hardDataScore = hasHard
+      ? Math.round(composite * 0.9 * 10) / 10
+      : null;
+    const textScore = hasHard
+      ? Math.round(((composite - hardDataScore! * w.hard) / w.text) * 10) / 10
+      : composite;
+
     result[pair] = {
       bucket,
-      composite: score,
-      textScore: score * 1.2,
-      hardDataScore: ["trade", "investment", "finance"].includes(bucket)
-        ? score * 0.95
-        : null,
-      convergence: ["trade", "investment", "finance"].includes(bucket)
-        ? 0.85 + Math.random() * 0.1
-        : null,
-      nArticles: Math.max(3, Math.round(10 + score * 0.1 + Math.random() * 8)),
-      direction: scoreToDirection(score),
+      composite,
+      textScore,
+      hardDataScore,
+      convergence: hasHard ? 0.85 + (quarterIdx % 5) * 0.02 : null,
+      nArticles: Math.max(3, Math.round(12 + Math.abs(composite) * 0.1)),
+      direction: scoreToDirection(composite),
     };
   }
   return result;
 }
 
-// Time series mock: last 8 quarters
+// Time series mock: last 8 quarters per bucket
 export function getMockTimeSeries(
   pair: BilateralPair,
   bucket: Bucket,
@@ -224,7 +264,7 @@ export function getMockMonthlyTimeSeries(
   for (let m = 0; m < 24; m++) {
     const qIdx = Math.min(Math.floor(m / 3), quarterly.length - 2);
     const nextQIdx = qIdx + 1;
-    const t = (m % 3) / 3; // interpolation factor within quarter
+    const t = (m % 3) / 3;
     const score =
       quarterly[qIdx].score * (1 - t) + quarterly[nextQIdx].score * t;
     months.push({

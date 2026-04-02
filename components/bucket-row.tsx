@@ -44,6 +44,24 @@ const BUCKET_DESCRIPTIONS: Record<Bucket, string> = {
     "Government signals, diplomatic events, summits, and regulatory shifts",
 };
 
+const BUCKET_SUBTITLES: Record<Bucket, string> = {
+  trade: "Bilateral trade flows & barriers",
+  investment: "FDI flows & screening",
+  technology: "Tech transfer & controls",
+  finance: "Currency & capital markets",
+  leverage: "Economic weaponization",
+  policy: "Government signals & diplomacy",
+};
+
+const LEVERAGE_CATEGORIES = [
+  { label: "Critical Minerals", examples: "Rare earths, gallium, germanium, cobalt" },
+  { label: "Energy", examples: "LNG leverage, pipeline politics, OPEC+" },
+  { label: "Food & Agriculture", examples: "Grain export bans, fertilizer controls" },
+  { label: "Supply Chains", examples: "Pharma APIs, shipping lanes, key components" },
+  { label: "Strategic Reserves", examples: "Mineral stockpiling, oil reserve releases" },
+  { label: "Economic Coercion", examples: "Tourism bans, market access denial, boycotts" },
+];
+
 const BUCKET_SOURCES: Record<Bucket, { papers: string[]; data: string[] }> = {
   trade: {
     papers: [
@@ -106,9 +124,10 @@ interface BucketRowProps {
   granularity?: Granularity;
 }
 
-export function BucketRow({ bucket, scores, granularity = "Q" }: BucketRowProps) {
+export function BucketRow({ bucket, scores, granularity: globalGranularity = "Q" }: BucketRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [showChart, setShowChart] = useState(false);
+  const [localGranularity, setLocalGranularity] = useState<Granularity>(globalGranularity);
   const { mode } = useMode();
   const Icon = BUCKET_ICONS[bucket];
   const weights = BUCKET_WEIGHTS[bucket];
@@ -137,11 +156,33 @@ export function BucketRow({ bucket, scores, granularity = "Q" }: BucketRowProps)
         <div className="flex items-center gap-3 w-40 shrink-0">
           <Icon size={16} strokeWidth={2} className="text-text-muted" />
           <div className="text-left">
-            <div className="text-sm font-medium text-text-primary">
+            <div className="text-sm font-medium text-text-primary flex items-center gap-1">
               {BUCKET_LABELS[bucket]}
+              {bucket === "leverage" && (
+                <span className="group/lev relative cursor-help">
+                  <svg width="12" height="12" viewBox="0 0 16 16" className="opacity-40 group-hover/lev:opacity-70 transition-opacity">
+                    <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.2"/>
+                    <text x="8" y="11.5" textAnchor="middle" fill="currentColor" fontSize="9" fontWeight="600">?</text>
+                  </svg>
+                  <div className="absolute bottom-full left-0 mb-2 w-72 p-3 rounded-md bg-[rgb(var(--text-primary))] text-[rgb(var(--bg-primary))] text-[11px] leading-relaxed opacity-0 pointer-events-none group-hover/lev:opacity-100 group-hover/lev:pointer-events-auto transition-opacity duration-200 z-50 shadow-lg normal-case tracking-normal font-sans">
+                    <div className="font-semibold mb-1.5">Economic Weapons Tracked</div>
+                    <ul className="space-y-0.5">
+                      {LEVERAGE_CATEGORIES.map((cat) => (
+                        <li key={cat.label}>
+                          <span className="font-medium">{cat.label}</span>
+                          <span className="opacity-70"> — {cat.examples}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-2 text-[10px] opacity-60">
+                      Farrell &amp; Newman (2019) Weaponized Interdependence
+                    </div>
+                  </div>
+                </span>
+              )}
             </div>
             <div className="text-xs text-text-muted hidden sm:block">
-              {BUCKET_DESCRIPTIONS[bucket].split(",")[0]}
+              {BUCKET_SUBTITLES[bucket]}
             </div>
           </div>
         </div>
@@ -276,6 +317,13 @@ export function BucketRow({ bucket, scores, granularity = "Q" }: BucketRowProps)
               <Info size={10} strokeWidth={2} />
               Sources &amp; methodology
             </summary>
+            <a
+              href={`/sources#${bucket}`}
+              className="inline-flex items-center gap-1 text-[11px] text-accent hover:text-accent-weak transition-colors mt-2 mb-1"
+            >
+              View complete data provenance
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 4l4 4-4 4"/></svg>
+            </a>
             <div className="space-y-3">
               <p className="text-xs text-text-muted leading-relaxed" style={{ maxWidth: "65ch" }}>
                 {BUCKET_DESCRIPTIONS[bucket]}. Scores: &minus;100
@@ -325,6 +373,27 @@ export function BucketRow({ bucket, scores, granularity = "Q" }: BucketRowProps)
             expanded ? "bg-bg-primary/30" : "bg-bg-primary/50"
           }`}
         >
+          {/* Header with Q/M toggle */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] text-text-muted uppercase tracking-wider">
+              Time Series
+            </div>
+            <div className="flex h-6 rounded border border-border overflow-hidden">
+              {(["Q", "M"] as Granularity[]).map((g) => (
+                <button
+                  key={g}
+                  onClick={(e) => { e.stopPropagation(); setLocalGranularity(g); }}
+                  className={`px-2 text-[10px] font-mono font-medium transition-colors ${
+                    localGranularity === g
+                      ? "bg-accent text-white"
+                      : "text-text-muted hover:text-text-secondary hover:bg-bg-hover"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-4">
             {(["CN-US", "CN-EU", "US-EU"] as BilateralPair[]).map((pair) => (
               <div key={pair} className="space-y-1">
@@ -332,11 +401,11 @@ export function BucketRow({ bucket, scores, granularity = "Q" }: BucketRowProps)
                   {pair}
                 </div>
                 <div className="h-12">
-                  <Sparkline pair={pair} bucket={bucket} granularity={granularity} />
+                  <Sparkline pair={pair} bucket={bucket} granularity={localGranularity} />
                 </div>
                 <div className="flex justify-between text-[10px] text-text-disabled font-mono">
-                  <span>{granularity === "M" ? "Apr \u201924" : "Q2 \u201924"}</span>
-                  <span>{granularity === "M" ? "Mar \u201926" : "Q1 \u201926"}</span>
+                  <span>{localGranularity === "M" ? "Apr \u201924" : "Q2 \u201924"}</span>
+                  <span>{localGranularity === "M" ? "Mar \u201926" : "Q1 \u201926"}</span>
                 </div>
               </div>
             ))}

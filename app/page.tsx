@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MOCK_SUMMARY, QUARTERLY_PAIR_SCORES, MONTHLY_PAIR_SCORES, getMockTimeSeries } from "@/lib/mock-data";
+import { MOCK_SUMMARY, QUARTERLY_PAIR_SCORES, MONTHLY_PAIR_SCORES, getBucketScoresAtIndex } from "@/lib/mock-data";
 import { BUCKETS, PAIR_LABELS, type BilateralPair, type Bucket, type BucketScore } from "@/lib/types";
 import { TrilateralDiagram, type Granularity, getTimelineData } from "@/components/trilateral-diagram";
 import { BucketRow } from "@/components/bucket-row";
@@ -21,39 +21,6 @@ function TrendIcon({ score }: { score: number }) {
   if (score >= 10) return <TrendingUp size={14} className="text-cooperation" />;
   if (score <= -10) return <TrendingDown size={14} className="text-conflict" />;
   return <Minus size={14} className="text-neutral" />;
-}
-
-function scoreToDirection(score: number) {
-  if (score >= 50) return "Strong Cooperation" as const;
-  if (score >= 15) return "Cooperation" as const;
-  if (score > -15) return "Neutral" as const;
-  if (score > -50) return "Conflict" as const;
-  return "Strong Conflict" as const;
-}
-
-/** Reconstruct bucket scores for a given quarterly index using time series data */
-function getBucketScoresAtQuarterIdx(
-  bucket: Bucket,
-  quarterIdx: number,
-): Record<string, BucketScore> {
-  const pairs: BilateralPair[] = ["CN-US", "CN-EU", "US-EU"];
-  const result: Record<string, BucketScore> = {};
-  for (const pair of pairs) {
-    const ts = getMockTimeSeries(pair, bucket);
-    const score = ts[quarterIdx]?.score ?? 0;
-    result[pair] = {
-      bucket,
-      composite: score,
-      textScore: score * 1.2,
-      hardDataScore: ["trade", "investment", "finance"].includes(bucket)
-        ? Math.round(score * 0.95 * 10) / 10
-        : null,
-      convergence: ["trade", "investment", "finance"].includes(bucket) ? 0.88 : null,
-      nArticles: Math.max(3, Math.round(12 + Math.abs(score) * 0.1)),
-      direction: scoreToDirection(score),
-    };
-  }
-  return result;
 }
 
 /** Map a monthly index (0-23) to the nearest quarterly index (0-7) for bucket data lookup */
@@ -116,10 +83,28 @@ export default function IndexPage() {
     }
     // Historical: use quarterly index (time series mock is quarterly)
     const qIdx = granularity === "M" ? monthlyToQuarterlyIdx(safeIdx) : safeIdx;
-    return getBucketScoresAtQuarterIdx(bucket, qIdx);
+    return getBucketScoresAtIndex(qIdx, bucket);
   }, [isLive, safeIdx, granularity, data]);
 
   const currentPeriod = timelineData[safeIdx]?.period ?? data.period;
+
+  // Timeline-aware KPI scores
+  const currentScores = timelineData[safeIdx]?.scores;
+  const headlineScore = isLive
+    ? data.overall.score
+    : Math.round(((currentScores["CN-US"] + currentScores["CN-EU"] + currentScores["US-EU"]) / 3) * 10) / 10;
+  const prevIdx = Math.max(0, safeIdx > 0 ? safeIdx - 1 : 0);
+  const prevScores = timelineData[prevIdx]?.scores;
+  const prevHeadline = (prevScores["CN-US"] + prevScores["CN-EU"] + prevScores["US-EU"]) / 3;
+  const headlineDelta = safeIdx > 0
+    ? Math.round((headlineScore - prevHeadline) * 10) / 10
+    : 0;
+  const prevPeriodLabel = safeIdx > 0 ? timelineData[prevIdx].period : "";
+
+  const getOverallPairScore = (pair: BilateralPair): number => {
+    if (isLive) return data.pairs[pair].overallScore;
+    return currentScores[pair];
+  };
 
   return (
     <div className="min-h-screen">
@@ -170,12 +155,14 @@ export default function IndexPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <ScoreBadge score={data.overall.score} size="xl" />
+                      <ScoreBadge score={headlineScore} size="xl" />
                       <div className="space-y-0.5">
-                        <DirectionLabel score={data.overall.score} />
+                        <DirectionLabel score={headlineScore} />
                         <div className="flex items-center gap-1 text-xs text-text-muted">
-                          <TrendIcon score={data.overall.score} />
-                          <span className="font-mono">-2.3 vs Q4 2025</span>
+                          <TrendIcon score={headlineDelta} />
+                          <span className="font-mono">
+                            {headlineDelta > 0 ? "+" : ""}{headlineDelta.toFixed(1)} vs {prevPeriodLabel || "—"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -196,7 +183,6 @@ export default function IndexPage() {
               {/* Bilateral Pair Cards */}
               <div className="grid grid-cols-3 gap-2">
                 {(["CN-US", "CN-EU", "US-EU"] as BilateralPair[]).map((pair) => {
-                  const pairData = data.pairs[pair];
                   const isSelected = selectedPair === pair;
                   return (
                     <button
@@ -208,8 +194,8 @@ export default function IndexPage() {
                     >
                       <div className="text-xs text-text-muted font-mono mb-1">{pair}</div>
                       <div className="flex items-center gap-2">
-                        <ScoreBadge score={pairData.overallScore} size="sm" />
-                        <TrendIcon score={pairData.overallScore} />
+                        <ScoreBadge score={getOverallPairScore(pair)} size="sm" />
+                        <TrendIcon score={getOverallPairScore(pair)} />
                       </div>
                       <div className="mt-1.5 text-[10px] text-text-muted">
                         {PAIR_LABELS[pair]}
