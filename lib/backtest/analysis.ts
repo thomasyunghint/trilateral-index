@@ -104,6 +104,7 @@ function pearsonCorrelation(x: number[], y: number[]): number {
  */
 function approxPValue(r: number, n: number): number {
   if (n < 4) return 1;
+  if (Math.abs(r) >= 1 - 1e-10) return 1e-10; // perfect correlation guard
   const t = r * Math.sqrt((n - 2) / (1 - r * r));
   const df = n - 2;
   // Approximate using normal distribution for df > 30, else use rough formula

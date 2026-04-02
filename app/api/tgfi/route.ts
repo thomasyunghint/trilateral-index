@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
+import { MOCK_SUMMARY } from "@/lib/mock-data";
 
 /**
  * GET /api/tgfi
  *
  * Returns the latest TGFI summary.
- * Currently returns mock data — will connect to Python backend via
- * SQLite or JSON file output when the pipeline is running.
+ * When Python pipeline is running, reads from outputs/tgfi_latest.json.
+ * Falls back to mock data.
  */
 export async function GET() {
   // TODO: Read from actual pipeline output (e.g., outputs/tgfi_latest.json)
-  // For now, return a marker so the frontend knows the API works
+  // For now, return computed mock summary
   return NextResponse.json({
-    status: "ok",
-    message: "TGFI API endpoint. Connect to Python pipeline output.",
-    mock: true,
+    ...MOCK_SUMMARY,
+    _source: "mock",
   });
 }
