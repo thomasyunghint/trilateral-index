@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMode } from "./mode-context";
-import { Activity, BookOpen, Archive, Database, FileCheck } from "lucide-react";
+import { Activity, BookOpen, Archive, Database, FileCheck, BarChart3 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Index", icon: Activity },
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/archive", label: "Archive", icon: Archive },
   { href: "/sources", label: "Sources", icon: Database },
   { href: "/review", label: "Review", icon: FileCheck },
+  { href: "/backtest", label: "Backtest", icon: BarChart3 },
 ];
 
 export function Navbar() {
