@@ -1,7 +1,7 @@
 import { Archive, Clock, Filter } from "lucide-react";
 
 const QUARTERS = [
-  { period: "2026-Q1", score: -12.8, articles: 243, status: "current" },
+  { period: "2026-Q1", score: -8.4, articles: 243, status: "current" },
   { period: "2025-Q4", score: -10.5, articles: 218, status: "complete" },
   { period: "2025-Q3", score: -8.2, articles: 195, status: "complete" },
   { period: "2025-Q2", score: -6.8, articles: 172, status: "complete" },
