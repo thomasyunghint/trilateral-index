@@ -46,7 +46,7 @@ export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
 
   try {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-20250514", // TODO: migrate to newer model before June 15 EOL
       max_tokens: 500,
       messages: [
         {
