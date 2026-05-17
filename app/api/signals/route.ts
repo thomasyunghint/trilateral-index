@@ -16,13 +16,29 @@ export async function GET(request: Request) {
   const sql = getDb();
 
   try {
-    const signals = await sql`
+    const rawSignals = await sql`
       SELECT id, pattern_type, claim_ids, score, title, summary, evidence, status, detected_at
       FROM signals
       WHERE status = ${status}
       ORDER BY score DESC, detected_at DESC
       LIMIT ${limit}
     `;
+
+    // Transform: extract analysis from evidence JSONB to top-level
+    const signals = rawSignals.map((s) => {
+      const evidence = typeof s.evidence === "string" ? JSON.parse(s.evidence) : s.evidence;
+      return {
+        ...s,
+        evidence: {
+          claims: evidence?.claims || [],
+          gap: evidence?.gap,
+          delta: evidence?.delta,
+          window_days: evidence?.window_days,
+        },
+        analysis: evidence?.analysis || null,
+        pairs: evidence?.claims?.[0]?.pair ? [evidence.claims[0].pair] : [],
+      };
+    });
 
     return NextResponse.json({
       signals,

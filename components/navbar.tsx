@@ -18,6 +18,9 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const { mode } = useMode();
+
+  // Hide navbar on insights page (different design)
+  if (pathname?.startsWith("/insights")) return null;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
