@@ -97,7 +97,7 @@ async function main() {
     ? await sql`
         SELECT id, url, source_name, title
         FROM articles
-        WHERE (full_text IS NULL OR word_count < 10)
+        WHERE (full_text IS NULL OR word_count < 100)
           AND source_name = ${filterSource}
         ORDER BY published_at DESC NULLS LAST
         LIMIT ${limit}
@@ -105,7 +105,7 @@ async function main() {
     : await sql`
         SELECT id, url, source_name, title
         FROM articles
-        WHERE (full_text IS NULL OR word_count < 10)
+        WHERE (full_text IS NULL OR word_count < 100)
         ORDER BY published_at DESC NULLS LAST
         LIMIT ${limit}
       `;
