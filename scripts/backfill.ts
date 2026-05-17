@@ -13,11 +13,14 @@
 import { neon } from "@neondatabase/serverless";
 import Parser from "rss-parser";
 import * as cheerio from "cheerio";
+import { requireEnv } from "./utils";
+
+requireEnv("DATABASE_URL");
 
 const sql = neon(process.env.DATABASE_URL!);
 const parser = new Parser({
   timeout: 15000,
-  headers: { "User-Agent": "TGFI-Monitor/1.0 (Academic Research; contact: yunghint@asu.edu)" },
+  headers: { "User-Agent": "TGFI-Monitor/1.0 (Academic Research)" },
 });
 
 const DELAY_MS = 1500; // polite crawling delay

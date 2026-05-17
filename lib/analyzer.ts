@@ -57,12 +57,24 @@ export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
       system: ANALYSIS_PROMPT,
     });
 
+    if (!response.content || response.content.length === 0) {
+      console.error("Empty response from Anthropic API");
+      return signal;
+    }
+
     const text = response.content[0].type === "text" ? response.content[0].text : "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
-      const analysis = JSON.parse(jsonMatch[0]);
-      return { ...signal, analysis };
+      try {
+        const analysis = JSON.parse(jsonMatch[0]);
+        // Validate required fields
+        if (typeof analysis.title === "string" && typeof analysis.analysis === "string") {
+          return { ...signal, analysis };
+        }
+      } catch {
+        console.error("Failed to parse analysis JSON from LLM response");
+      }
     }
   } catch (err) {
     console.error(`Analysis failed for signal: ${(err as Error).message?.slice(0, 50)}`);

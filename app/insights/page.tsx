@@ -153,26 +153,32 @@ export default function InsightsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       try {
         // Try cached signals first, fall back to live detection
         const [signalsRes, statusRes] = await Promise.all([
-          fetch("/api/signals?limit=10"),
-          fetch("/api/status"),
+          fetch("/api/signals?limit=10", { signal: controller.signal }),
+          fetch("/api/status", { signal: controller.signal }),
         ]);
+
+        if (controller.signal.aborted) return;
 
         if (signalsRes.ok) {
           const data = await signalsRes.json();
           if (data.signals && data.signals.length > 0) {
             setSignals(data.signals);
           } else {
-            // No cached signals — run live detection (first time)
-            const detectRes = await fetch("/api/detect?limit=10");
+            // No cached signals — try live detection
+            const detectRes = await fetch("/api/detect?limit=10", { signal: controller.signal });
             if (detectRes.ok) {
               const detectData = await detectRes.json();
               setSignals(detectData.signals || []);
             }
           }
+        } else {
+          setError("Failed to load signals");
         }
 
         if (statusRes.ok) {
@@ -180,13 +186,18 @@ export default function InsightsPage() {
           setStatus(data);
         }
       } catch (err) {
-        setError((err as Error).message);
+        if ((err as Error).name !== "AbortError") {
+          setError((err as Error).message || "Failed to load data");
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchData();
+    return () => controller.abort();
   }, []);
 
   if (loading) {

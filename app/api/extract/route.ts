@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { extractClaims } from "@/lib/extractor";
+import { verifyCronAuth } from "@/lib/auth";
 
 export const maxDuration = 300;
 
 const BATCH_SIZE = 5;
+const MAX_CLAIMS_PER_ARTICLE = 30;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authErr = verifyCronAuth(request);
+  if (authErr) return authErr;
 
   const sql = getDb();
 
@@ -47,7 +47,9 @@ export async function GET(request: Request) {
         continue;
       }
 
-      for (const claim of extraction.claims) {
+      // Cap claims per article to prevent runaway inserts
+      const claims = extraction.claims.slice(0, MAX_CLAIMS_PER_ARTICLE);
+      for (const claim of claims) {
         await sql`
           INSERT INTO claims (
             article_id, claim_text, claim_type, direction, verbatim_quote,

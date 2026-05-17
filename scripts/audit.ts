@@ -14,6 +14,9 @@
  * - WARN: single source >60% of claims
  */
 import { neon } from "@neondatabase/serverless";
+import { requireEnv } from "./utils";
+
+requireEnv("DATABASE_URL");
 
 async function main() {
   const sql = neon(process.env.DATABASE_URL!);

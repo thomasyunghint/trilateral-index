@@ -8,6 +8,9 @@
  */
 import { neon } from "@neondatabase/serverless";
 import * as cheerio from "cheerio";
+import { requireEnv } from "./utils";
+
+requireEnv("DATABASE_URL");
 
 const sql = neon(process.env.DATABASE_URL!);
 const DELAY_MS = 1200;

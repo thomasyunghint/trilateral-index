@@ -393,13 +393,15 @@ function detectSourceDisagreement(claims: ClaimRow[]): Signal[] {
  * Main detection function: runs all patterns and returns scored signals.
  */
 export async function runDetection(sqlClient: NeonQueryFunction<false, false>): Promise<Signal[]> {
-  // Fetch all extracted claims with article metadata
+  // Fetch recent extracted claims with article metadata (last 180 days, max 5000)
   const claims = await sqlClient`
     SELECT c.*, a.source_name, a.title, a.published_at
     FROM claims c
     JOIN articles a ON c.article_id = a.id
     WHERE a.status = 'extracted'
+      AND (a.published_at IS NULL OR a.published_at > NOW() - INTERVAL '180 days')
     ORDER BY a.published_at DESC NULLS LAST
+    LIMIT 5000
   ` as unknown as ClaimRow[];
 
   if (claims.length < 5) {

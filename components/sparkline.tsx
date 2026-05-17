@@ -33,9 +33,10 @@ export function Sparkline({ pair, bucket, className = "", granularity = "Q" }: S
   const innerW = W - PAD * 2;
   const innerH = H - PAD * 2;
 
+  const divisor = Math.max(scores.length - 1, 1);
   const points = scores.map((s, i) => ({
-    x: PAD + (i / (scores.length - 1)) * innerW,
-    y: PAD + ((maxS - s) / range) * innerH,
+    x: PAD + (i / divisor) * innerW,
+    y: PAD + ((maxS - s) / (range || 1)) * innerH,
   }));
 
   const zeroY = PAD + (maxS / range) * innerH;

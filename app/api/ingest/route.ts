@@ -2,22 +2,26 @@ import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 import { getDb } from "@/lib/db";
 import { SOURCES } from "@/lib/sources";
+import { verifyCronAuth } from "@/lib/auth";
 
 const parser = new Parser({
   timeout: 10000,
   headers: {
-    "User-Agent":
-      "TGFI-Monitor/1.0 (Academic Research; contact: yunghint@asu.edu)",
+    "User-Agent": "TGFI-Monitor/1.0 (Academic Research)",
   },
 });
 
 export const maxDuration = 120;
 
+function safeISODate(dateStr: string | undefined): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authErr = verifyCronAuth(request);
+  if (authErr) return authErr;
 
   const sql = getDb();
   const errors: Array<{ source: string; error: string }> = [];
@@ -40,7 +44,7 @@ export async function GET(request: Request) {
           item.summary ||
           "";
 
-        const wordCount = content.split(/\s+/).length;
+        const wordCount = content.trim().length > 0 ? content.trim().split(/\s+/).length : 0;
 
         try {
           const result = await sql`
@@ -50,7 +54,7 @@ export async function GET(request: Request) {
               ${source.rss_url},
               ${item.title},
               ${item.link},
-              ${item.pubDate ? new Date(item.pubDate).toISOString() : null},
+              ${safeISODate(item.pubDate)},
               ${content || null},
               ${wordCount || null}
             )
@@ -70,10 +74,14 @@ export async function GET(request: Request) {
     }
   }
 
-  await sql`
-    INSERT INTO ingest_log (sources_checked, articles_found, articles_new, errors)
-    VALUES (${SOURCES.length}, ${totalFound}, ${totalNew}, ${JSON.stringify(errors)})
-  `;
+  try {
+    await sql`
+      INSERT INTO ingest_log (sources_checked, articles_found, articles_new, errors)
+      VALUES (${SOURCES.length}, ${totalFound}, ${totalNew}, ${JSON.stringify(errors)})
+    `;
+  } catch (logErr) {
+    console.error("Failed to write ingest_log:", logErr);
+  }
 
   return NextResponse.json({
     success: true,

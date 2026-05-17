@@ -2,12 +2,15 @@ import { neon } from "@neondatabase/serverless";
 import Parser from "rss-parser";
 import { SOURCES } from "../lib/sources";
 import { extractClaims } from "../lib/extractor";
+import { requireEnv } from "./utils";
+
+requireEnv("DATABASE_URL", "ANTHROPIC_API_KEY");
 
 async function main() {
   const sql = neon(process.env.DATABASE_URL!);
   const parser = new Parser({
     timeout: 10000,
-    headers: { "User-Agent": "TGFI-Monitor/1.0 (Academic Research; contact: yunghint@asu.edu)" },
+    headers: { "User-Agent": "TGFI-Monitor/1.0 (Academic Research)" },
   });
 
   console.log("=== INGESTING ALL SOURCES ===\n");

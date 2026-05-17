@@ -5,6 +5,9 @@
 import { neon } from "@neondatabase/serverless";
 import { runDetection } from "../lib/detector";
 import { analyzeTopSignals } from "../lib/analyzer";
+import { requireEnv } from "./utils";
+
+requireEnv("DATABASE_URL", "ANTHROPIC_API_KEY");
 
 async function main() {
   const sql = neon(process.env.DATABASE_URL!);

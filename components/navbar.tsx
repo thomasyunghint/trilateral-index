@@ -18,10 +18,10 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const { mode } = useMode();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Hide navbar on insights page (different design)
   if (pathname?.startsWith("/insights")) return null;
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border glass-panel">

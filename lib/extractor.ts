@@ -99,6 +99,14 @@ export async function extractClaims(
     system: EXTRACTION_PROMPT,
   });
 
+  if (!response.content || response.content.length === 0) {
+    return {
+      bucket_weights: { trade: 0, investment: 0, technology: 0, finance: 0, leverage: 0, policy: 0 },
+      pairs: [],
+      claims: [],
+    };
+  }
+
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
 
@@ -111,5 +119,19 @@ export async function extractClaims(
     };
   }
 
-  return JSON.parse(jsonMatch[0]) as ExtractionResult;
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    // Validate essential structure
+    return {
+      bucket_weights: parsed.bucket_weights || { trade: 0, investment: 0, technology: 0, finance: 0, leverage: 0, policy: 0 },
+      pairs: Array.isArray(parsed.pairs) ? parsed.pairs : [],
+      claims: Array.isArray(parsed.claims) ? parsed.claims : [],
+    };
+  } catch {
+    return {
+      bucket_weights: { trade: 0, investment: 0, technology: 0, finance: 0, leverage: 0, policy: 0 },
+      pairs: [],
+      claims: [],
+    };
+  }
 }
