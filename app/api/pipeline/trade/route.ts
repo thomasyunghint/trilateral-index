@@ -18,17 +18,35 @@ import type { BilateralPair } from "@/lib/types";
 
 const VALID_PAIRS: BilateralPair[] = ["CN-US", "CN-EU", "US-EU"];
 
+export const maxDuration = 60;
+
+const VALID_FREQS = ["Q", "M"];
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const freq = (url.searchParams.get("freq") ?? "Q") as "Q" | "M";
+  const freqParam = url.searchParams.get("freq") ?? "Q";
+  if (!VALID_FREQS.includes(freqParam)) {
+    return NextResponse.json(
+      { error: `Invalid freq. Must be one of: ${VALID_FREQS.join(", ")}` },
+      { status: 400 },
+    );
+  }
+  const freq = freqParam as "Q" | "M";
   const start = url.searchParams.get("start") ?? "2022-Q1";
+  // Validate start format
+  if (!/^\d{4}-(Q[1-4]|\d{2})$/.test(start)) {
+    return NextResponse.json(
+      { error: "Invalid start format. Use YYYY-QN or YYYY-MM" },
+      { status: 400 },
+    );
+  }
   const pairParam = url.searchParams.get("pair");
 
   try {
     if (pairParam) {
       if (!VALID_PAIRS.includes(pairParam as BilateralPair)) {
         return NextResponse.json(
-          { error: `Invalid pair: ${pairParam}. Valid: ${VALID_PAIRS.join(", ")}` },
+          { error: `Invalid pair. Valid options: ${VALID_PAIRS.join(", ")}` },
           { status: 400 },
         );
       }
@@ -45,10 +63,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Trade pipeline error:", error);
     return NextResponse.json(
-      {
-        error: "Pipeline execution failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Pipeline execution failed" },
       { status: 500 },
     );
   }

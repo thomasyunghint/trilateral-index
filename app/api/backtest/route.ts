@@ -12,9 +12,19 @@
 import { NextResponse } from "next/server";
 import { runBacktest, runMockBacktest } from "@/lib/backtest";
 
+export const maxDuration = 60;
+
+const VALID_MODES = ["live", "mock"];
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("mode") ?? "mock";
+  if (!VALID_MODES.includes(mode)) {
+    return NextResponse.json(
+      { error: `Invalid mode. Must be one of: ${VALID_MODES.join(", ")}` },
+      { status: 400 },
+    );
+  }
 
   try {
     if (mode === "live") {
@@ -37,10 +47,7 @@ export async function GET(request: Request) {
       });
     } catch (fallbackError) {
       return NextResponse.json(
-        {
-          error: "Backtest failed",
-          details: error instanceof Error ? error.message : "Unknown",
-        },
+        { error: "Backtest failed" },
         { status: 500 },
       );
     }

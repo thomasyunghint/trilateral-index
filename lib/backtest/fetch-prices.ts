@@ -44,9 +44,9 @@ export async function fetchETFPrices(
   const points: PricePoint[] = [];
   for (let i = 0; i < timestamps.length; i++) {
     const date = new Date(timestamps[i] * 1000);
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(date.getUTCDate()).padStart(2, "0");
 
     const close = quotes.close?.[i];
     const adj = adjClose[i] ?? close;

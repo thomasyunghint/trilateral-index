@@ -24,7 +24,10 @@ async function main() {
   console.log("Analyzing top 5 with Sonnet...");
   const analyzed = await analyzeTopSignals(signals.slice(0, 5), 5);
 
-  // Clear old signals
+  // Clear old signals and insert new ones
+  // Note: Neon serverless doesn't support multi-statement transactions via tagged templates.
+  // We insert first into a staging approach: delete then insert quickly to minimize empty window.
+  console.log("Replacing signals in DB...");
   await sql`DELETE FROM signals`;
 
   for (const signal of analyzed) {

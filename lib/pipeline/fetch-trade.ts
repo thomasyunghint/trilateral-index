@@ -99,6 +99,7 @@ async function fetchOneDirection(
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     next: { revalidate: 86400 }, // cache 24h
+    signal: AbortSignal.timeout(30000), // 30s timeout
   });
 
   if (!res.ok) {
