@@ -88,7 +88,7 @@ function InsightCard({ signal, rank }: { signal: Signal; rank: number }) {
   const tags = signal.analysis?.tags || signal.pairs;
 
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors">
+    <div className="insights-card border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-center gap-3">
           <span className="text-2xl font-bold text-zinc-600 font-mono">#{rank}</span>
@@ -123,7 +123,7 @@ function InsightCard({ signal, rank }: { signal: Signal; rank: number }) {
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-zinc-800 pt-4">
           {signal.evidence.claims.map((claim, i) => (
-            <div key={i} className="bg-zinc-950 rounded p-3">
+            <div key={i} className="insights-evidence rounded p-3">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] font-semibold text-zinc-500 uppercase">{claim.source}</span>
                 <span className="text-[10px] text-zinc-600">
@@ -205,9 +205,9 @@ export default function InsightsPage() {
     : "Never";
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen text-zinc-100" style={{ backgroundColor: '#09090b', color: '#fafafa' }}>
       {/* Header */}
-      <header className="border-b border-zinc-800/50 px-8 py-6">
+      <header className="insights-header border-b px-8 py-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -258,7 +258,7 @@ export default function InsightsPage() {
             <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wide mb-4">Source Coverage</h3>
             <div className="flex flex-wrap gap-3">
               {status.source_coverage.map((s, i) => (
-                <div key={i} className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5">
+                <div key={i} className="insights-source flex items-center gap-2 border rounded px-3 py-1.5">
                   <span className="text-xs text-zinc-300">{s.source_name}</span>
                   <span className="text-[10px] text-zinc-600 font-mono">{s.count}</span>
                 </div>
@@ -275,7 +275,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800/50 px-8 py-4 mt-16">
+      <footer className="insights-footer border-t px-8 py-4 mt-16">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <span className="text-[11px] text-zinc-600">
             TGFI Research System | Prof. Keyu Jin, HKUST
@@ -291,7 +291,7 @@ export default function InsightsPage() {
 
 function StatCard({ label, value, highlight, small }: { label: string; value: string; highlight?: boolean; small?: boolean }) {
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3">
+    <div className="insights-stat border rounded-lg px-4 py-3">
       <div className="text-[11px] text-zinc-500 uppercase tracking-wide mb-1">{label}</div>
       <div className={`font-semibold ${highlight ? "text-rose-400" : "text-zinc-100"} ${small ? "text-sm" : "text-xl font-mono"}`}>
         {value}
