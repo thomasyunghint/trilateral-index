@@ -20,7 +20,10 @@ export async function GET(request: Request) {
       SELECT id, pattern_type, claim_ids, score, title, summary, evidence, status, detected_at
       FROM signals
       WHERE status = ${status}
-      ORDER BY score DESC, detected_at DESC
+      ORDER BY
+        CASE WHEN evidence::text LIKE '%"analysis":%' AND NOT evidence::text LIKE '%"analysis": null%' AND NOT evidence::text LIKE '%"analysis":null%' THEN 0 ELSE 1 END,
+        score DESC,
+        detected_at ASC
       LIMIT ${limit}
     `;
 
