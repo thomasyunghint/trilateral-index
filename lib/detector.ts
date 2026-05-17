@@ -80,6 +80,63 @@ function getClaimPairs(claim: ClaimRow): string[] {
 }
 
 /**
+ * Topic similarity between two claims.
+ * Uses keyword overlap (Jaccard) on claim text.
+ * Returns 0-1 where > 0.15 means "same topic area".
+ */
+function topicSimilarity(a: ClaimRow, b: ClaimRow): number {
+  const stopwords = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been",
+    "has", "have", "had", "do", "does", "did", "will", "would", "could", "should",
+    "may", "might", "can", "shall", "to", "of", "in", "for", "on", "with", "at",
+    "by", "from", "as", "into", "through", "during", "before", "after", "and", "but",
+    "or", "not", "no", "if", "than", "that", "this", "these", "those", "it", "its",
+    "more", "most", "very", "also", "which", "who", "what", "when", "where", "how",
+    "all", "each", "every", "both", "few", "many", "some", "any", "other", "new"]);
+
+  const tokenize = (text: string): Set<string> => {
+    const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/)
+      .filter(w => w.length > 2 && !stopwords.has(w));
+    return new Set(words);
+  };
+
+  const setA = tokenize(a.claim_text);
+  const setB = tokenize(b.claim_text);
+  if (setA.size === 0 || setB.size === 0) return 0;
+
+  let intersection = 0;
+  for (const word of setA) {
+    if (setB.has(word)) intersection++;
+  }
+
+  const union = setA.size + setB.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+/**
+ * Check if two claims share the same broad topic area.
+ * Uses bucket weight similarity + keyword overlap.
+ */
+function sameTopicArea(a: ClaimRow, b: ClaimRow): boolean {
+  // 1. Bucket weight cosine similarity
+  const bucketA = [a.bucket_trade, a.bucket_investment, a.bucket_technology, a.bucket_finance, a.bucket_leverage, a.bucket_policy];
+  const bucketB = [b.bucket_trade, b.bucket_investment, b.bucket_technology, b.bucket_finance, b.bucket_leverage, b.bucket_policy];
+
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < 6; i++) {
+    dot += bucketA[i] * bucketB[i];
+    magA += bucketA[i] * bucketA[i];
+    magB += bucketB[i] * bucketB[i];
+  }
+  const cosineSim = (magA > 0 && magB > 0) ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+
+  // 2. Keyword overlap
+  const keywordSim = topicSimilarity(a, b);
+
+  // Need EITHER high bucket similarity OR keyword overlap
+  return cosineSim > 0.7 || keywordSim > 0.12;
+}
+
+/**
  * Pattern 1: Cross-bucket divergence
  * Find pairs where one bucket's average direction is significantly different from another.
  * Example: For CN-EU pair, Trade avg = +40 but Technology avg = -50 → gap = 90
@@ -184,11 +241,14 @@ function detectTemporalFlip(claims: ClaimRow[]): Signal[] {
       .filter(c => c.published_at)
       .sort((a, b) => new Date(a.published_at!).getTime() - new Date(b.published_at!).getTime());
 
-    // Compare each pair within window — must be from DIFFERENT articles
+    // Compare each pair within window — must be from DIFFERENT articles AND same topic
     for (let i = 0; i < sorted.length; i++) {
       for (let j = i + 1; j < sorted.length; j++) {
         // Skip if same article (different claims in one article is not a "flip")
         if (sorted[i].article_id === sorted[j].article_id) continue;
+
+        // CRITICAL: must be about the same topic area
+        if (!sameTopicArea(sorted[i], sorted[j])) continue;
 
         const dateA = new Date(sorted[i].published_at!);
         const dateB = new Date(sorted[j].published_at!);
@@ -281,10 +341,25 @@ function detectSourceDisagreement(claims: ClaimRow[]): Signal[] {
     const disagreeSources = [...negSources].filter(s => !posSources.has(s));
     if (disagreeSources.length === 0) continue;
 
-    const topPos = positive.sort((a, b) => b.direction - a.direction)[0];
-    const topNeg = negative.sort((a, b) => a.direction - b.direction)[0];
+    // Find best disagreeing pair that's about the SAME topic
+    const sortedPos = positive.sort((a, b) => b.direction - a.direction);
+    const sortedNeg = negative.sort((a, b) => a.direction - b.direction);
 
-    if (topPos.source_name === topNeg.source_name) continue;
+    let topPos: ClaimRow | null = null;
+    let topNeg: ClaimRow | null = null;
+
+    for (const p of sortedPos) {
+      for (const n of sortedNeg) {
+        if (p.source_name !== n.source_name && sameTopicArea(p, n)) {
+          topPos = p;
+          topNeg = n;
+          break;
+        }
+      }
+      if (topPos) break;
+    }
+
+    if (!topPos || !topNeg) continue;
 
     const gap = topPos.direction - topNeg.direction;
     const score = Math.min(100, gap * Math.sqrt(positive.length + negative.length) / 8);
