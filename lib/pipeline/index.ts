@@ -11,7 +11,7 @@ import type { BilateralPair } from "../types";
 import type { TradePipelineResult } from "./types";
 import { fetchBilateralTrade, aggregateToFlows } from "./fetch-trade";
 import { normalizeTradeFlows } from "./normalize";
-import { OECD_SDMX, NORMALIZATION, PAIR_COUNTRIES } from "./config";
+import { OECD_SDMX, NORMALIZATION } from "./config";
 
 /**
  * Run the full trade pipeline for all 3 bilateral pairs.

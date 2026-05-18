@@ -178,8 +178,7 @@ export function computeCorrelation(
   metricName: string,
   etfSymbol: string,
 ): CorrelationResult | null {
-  // Build period → value maps
-  const tgfiMap = new Map(tgfiScores.map((s) => [s.period, s.delta]));
+  // Build period → return map
   const etfMap = new Map(etfReturns.map((r) => [r.period, r.returnPct]));
 
   // Align: for each TGFI period t, find ETF return at period t+lag
@@ -282,7 +281,6 @@ export function computeHitRate(
   metricName: string,
   etfSymbol: string,
 ): HitRateResult | null {
-  const tgfiMap = new Map(tgfiScores.map((s) => [s.period, s.delta]));
   const etfPeriods = etfReturns.map((r) => r.period).sort();
   const etfMap = new Map(etfReturns.map((r) => [r.period, r.returnPct]));
 

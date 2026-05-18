@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Bucket, BilateralPair } from "@/lib/types";
-import { ScoreBadge, getScoreColor } from "@/components/score-badge";
+import { ScoreBadge } from "@/components/score-badge";
 import {
   CheckCircle2,
   XCircle,
@@ -10,8 +10,6 @@ import {
   Filter,
   BarChart3,
   FileText,
-  ExternalLink,
-  ChevronDown,
   AlertTriangle,
 } from "lucide-react";
 

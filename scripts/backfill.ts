@@ -164,15 +164,6 @@ async function backfillMerics(maxPages: number = 15) {
           break;
         }
 
-        let pageNew = 0;
-        links.each((_, el) => {
-          const href = $(el).attr("href") || "";
-          const title = $(el).text().trim();
-          if (title && href) {
-            const fullUrl = href.startsWith("http") ? href : `https://merics.org${href}`;
-            // queue for insertion (async inside each is tricky, handle below)
-          }
-        });
       }
 
       let pageNew = 0;

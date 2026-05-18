@@ -101,12 +101,22 @@ function recomputePairSummary(
  *   - source=live  → real OECD trade data for the trade bucket,
  *                     mock data for the other 5 buckets
  */
+const VALID_SOURCES = ["mock", "live"];
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const source = url.searchParams.get("source") ?? "mock";
 
+  // Validate source param
+  if (!VALID_SOURCES.includes(source)) {
+    return NextResponse.json(
+      { error: `Invalid source. Must be one of: ${VALID_SOURCES.join(", ")}` },
+      { status: 400 },
+    );
+  }
+
   /* ---- Mock path (default) ---- */
-  if (source !== "live") {
+  if (source === "mock") {
     return NextResponse.json({
       ...MOCK_SUMMARY,
       _source: "mock",

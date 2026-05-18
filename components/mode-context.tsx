@@ -13,14 +13,19 @@ const ModeContext = createContext<{
 });
 
 export function ModeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<Mode>("professor");
+  // Initialize from URL param synchronously to avoid setState-in-effect
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "professor";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("mode") === "quant" ? "quant" : "professor";
+  });
 
   const toggleMode = useCallback(() => {
     setMode((prev) => (prev === "professor" ? "quant" : "professor"));
   }, []);
 
   useEffect(() => {
-    // Hidden activation: Ctrl+Shift+Q or ?mode=quant in URL
+    // Hidden activation: Ctrl+Shift+Q
     function handleKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey && e.shiftKey && e.key === "Q") {
         e.preventDefault();
@@ -28,13 +33,6 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
       }
     }
     window.addEventListener("keydown", handleKeyDown);
-
-    // Check URL param on mount
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("mode") === "quant") {
-      setMode("quant");
-    }
-
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleMode]);
 

@@ -20,7 +20,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
  * Extract main article text from HTML.
  * Tries multiple selectors common across think tank sites.
  */
-function extractContent(html: string, url: string): string {
+function extractContent(html: string): string {
   const $ = cheerio.load(html);
 
   // Remove noise
@@ -81,7 +81,7 @@ async function fetchArticleContent(url: string): Promise<string | null> {
     });
     if (!resp.ok) return null;
     const html = await resp.text();
-    const content = extractContent(html, url);
+    const content = extractContent(html);
     return content.length > 100 ? content : null;
   } catch {
     return null;
@@ -141,7 +141,6 @@ async function main() {
 
   // Audit
   const [before] = await sql`SELECT COUNT(*) as n FROM articles WHERE word_count < 10 OR full_text IS NULL`;
-  const [after] = await sql`SELECT source_name, AVG(word_count)::int as avg, COUNT(*) FILTER (WHERE word_count > 100) as good FROM articles WHERE source_name IN ('Bruegel', 'Rhodium Group') GROUP BY source_name`;
 
   console.log(`\n=== RESULTS ===`);
   console.log(`Fetched: ${fetched} | Failed: ${failed}`);

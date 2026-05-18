@@ -1,4 +1,4 @@
-import type { BilateralPair, Bucket } from "../types";
+import type { BilateralPair } from "../types";
 
 /** Single price observation for an ETF */
 export interface PricePoint {

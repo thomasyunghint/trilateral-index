@@ -122,8 +122,8 @@ function InsightCard({ signal, rank }: { signal: Signal; rank: number }) {
 
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-zinc-800 pt-4">
-          {signal.evidence.claims.map((claim, i) => (
-            <div key={i} className="insights-evidence rounded p-3">
+          {signal.evidence.claims.map((claim) => (
+            <div key={claim.id} className="insights-evidence rounded p-3">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] font-semibold text-zinc-500 uppercase">{claim.source}</span>
                 <span className="text-[10px] text-zinc-600">
@@ -204,6 +204,17 @@ export default function InsightsPage() {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-zinc-500 text-sm animate-pulse">Running detection patterns...</div>
+      </div>
+    );
+  }
+
+  if (error && signals.length === 0) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <div className="text-rose-400 text-sm mb-2">Failed to load insights</div>
+          <div className="text-zinc-500 text-xs">{error}</div>
+        </div>
       </div>
     );
   }

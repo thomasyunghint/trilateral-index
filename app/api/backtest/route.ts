@@ -45,7 +45,7 @@ export async function GET(request: Request) {
         ...fallback,
         _warning: "Live data unavailable, using synthetic returns",
       });
-    } catch (fallbackError) {
+    } catch {
       return NextResponse.json(
         { error: "Backtest failed" },
         { status: 500 },

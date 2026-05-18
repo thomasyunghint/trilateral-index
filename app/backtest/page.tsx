@@ -10,8 +10,6 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */

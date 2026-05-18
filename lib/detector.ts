@@ -10,7 +10,7 @@
  * Each pattern produces a Signal with a confidence score (0-100).
  * Signals with score > 60 are surfaced.
  */
-import { neon, NeonQueryFunction } from "@neondatabase/serverless";
+import { NeonQueryFunction } from "@neondatabase/serverless";
 
 export type Signal = {
   pattern_type: string;
@@ -55,8 +55,7 @@ type ClaimRow = {
   published_at: string | null;
 };
 
-const BUCKETS = ["trade", "investment", "technology", "finance", "leverage", "policy"] as const;
-type Bucket = (typeof BUCKETS)[number];
+type Bucket = "trade" | "investment" | "technology" | "finance" | "leverage" | "policy";
 
 function getDominantBucket(claim: ClaimRow): Bucket {
   const weights: Record<Bucket, number> = {
@@ -166,7 +165,7 @@ function detectCrossBucketDivergence(claims: ClaimRow[]): Signal[] {
     }
 
     // Find divergent pairs of buckets
-    const activeBuckets = Object.entries(bucketStats).filter(([_, s]) => s.count >= 2);
+    const activeBuckets = Object.entries(bucketStats).filter(([, s]) => s.count >= 2);
 
     for (let i = 0; i < activeBuckets.length; i++) {
       for (let j = i + 1; j < activeBuckets.length; j++) {
