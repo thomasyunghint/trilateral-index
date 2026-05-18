@@ -257,6 +257,93 @@ export default function MethodologyPage() {
         </div>
       </section>
 
+      {/* Classification Criteria */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 border-t border-border">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText size={16} className="text-accent" />
+          <h2 className="text-lg font-medium text-text-primary">Text Classification Criteria</h2>
+        </div>
+        <p className="text-xs text-text-secondary mb-4 max-w-2xl leading-relaxed">
+          Each article is tagged with 1&ndash;3 criteria codes identifying the specific trade mechanism documented.
+          Scores reflect the magnitude of the strongest signal, not the number of tags.
+          Full operational definitions, boundary conditions, and worked examples are in the internal codebook.
+        </p>
+
+        {/* Fragmentation */}
+        <div className="mb-4">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-conflict mb-2 border-b border-conflict/30 pb-1">
+            Fragmentation Signals
+          </div>
+          <div className="space-y-1.5">
+            {[
+              { id: "T-FRAG-01", label: "Tariff Increase", def: "Imposition or escalation of tariffs on goods between the country pair" },
+              { id: "T-FRAG-02", label: "Export Controls", def: "Restrictions on export of goods, materials, or technologies (licensing, bans, quotas)" },
+              { id: "T-FRAG-03", label: "Trade Decline (Quantified)", def: "Quantified decline in trade flows \u2014 volume, value, or share. CGE/gravity model simulations qualify" },
+              { id: "T-FRAG-04", label: "Trade Diversion", def: "Trade redirecting to third-party countries due to bilateral barriers" },
+              { id: "T-FRAG-05", label: "Non-Tariff Barriers", def: "CVDs, anti-dumping, CBAM, TBT, SPS measures, local content requirements" },
+              { id: "T-FRAG-06", label: "Supply Chain Decoupling", def: "Reshoring, nearshoring, or strategic diversification of production networks" },
+              { id: "T-FRAG-07", label: "Sanctions / Embargo", def: "Full or near-total trade prohibitions, entity list blocks, comprehensive sanctions" },
+            ].map((c) => (
+              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-conflict/5 border border-conflict/10">
+                <span className="font-mono text-[11px] text-conflict shrink-0 mt-0.5 w-24">{c.id}</span>
+                <div>
+                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
+                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cooperation */}
+        <div className="mb-4">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-cooperation mb-2 border-b border-cooperation/30 pb-1">
+            Cooperation Signals
+          </div>
+          <div className="space-y-1.5">
+            {[
+              { id: "T-COOP-01", label: "Tariff Reduction", def: "Reduction, suspension, or elimination of tariffs between the pair" },
+              { id: "T-COOP-02", label: "Trade Agreement", def: "Negotiation, signing, or implementation of FTA, customs union, MRA, or preferential arrangement" },
+              { id: "T-COOP-03", label: "Trade Growth (Quantified)", def: "Quantified increase in trade flows. CGE/gravity model simulations qualify" },
+              { id: "T-COOP-04", label: "Dispute Resolution", def: "Resolution of trade disputes through WTO DSB, bilateral negotiation, or arbitration" },
+              { id: "T-COOP-05", label: "Trade Facilitation", def: "Customs simplification, standards harmonization, digital trade infrastructure" },
+              { id: "T-COOP-06", label: "Joint Initiative", def: "Cooperative joint efforts: shared regulatory frameworks, coordinated policy, supply chain partnerships" },
+            ].map((c) => (
+              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-cooperation/5 border border-cooperation/10">
+                <span className="font-mono text-[11px] text-cooperation shrink-0 mt-0.5 w-24">{c.id}</span>
+                <div>
+                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
+                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quality + Other */}
+        <div className="mb-2">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-2 border-b border-border pb-1">
+            Quality Flags &amp; Other
+          </div>
+          <div className="space-y-1.5">
+            {[
+              { id: "T-OTHER", label: "Other Trade Signal", def: "Evidence through a channel not captured above (price impact, uncertainty indices). Used as secondary tag" },
+              { id: "T-QUAL-01", label: "Wrong Bucket", def: "Content is not about trade in goods (services, finance, climate, security)" },
+              { id: "T-QUAL-02", label: "Wrong Pair", def: "Primary focus is on a different country pair than assigned" },
+              { id: "T-QUAL-03", label: "Insufficient Evidence", def: "On-topic but too little evidence for a confident score" },
+            ].map((c) => (
+              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-bg-surface border border-border/50">
+                <span className="font-mono text-[11px] text-text-muted shrink-0 mt-0.5 w-24">{c.id}</span>
+                <div>
+                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
+                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Scoring Spectrum */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 border-t border-border">
         <h2 className="text-lg font-medium text-text-primary mb-4">Cooperation-Conflict Spectrum</h2>

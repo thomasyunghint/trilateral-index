@@ -99,7 +99,7 @@ export function TrilateralDiagram({
     <div className={`${className} space-y-3`}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full max-w-[460px] mx-auto"
+        className="w-full max-w-[540px] mx-auto"
         role="img"
         aria-label={`Trilateral relationship diagram for ${current.period}`}
       >
@@ -172,7 +172,7 @@ export function TrilateralDiagram({
       </div>
 
       {/* Timeline controls */}
-      <div className="max-w-[460px] mx-auto pt-2 space-y-2">
+      <div className="max-w-[540px] mx-auto pt-2 space-y-2">
         <div className="flex items-center gap-3">
           <button
             onClick={isPlaying ? () => setIsPlaying(false) : handlePlay}
