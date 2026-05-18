@@ -50,7 +50,14 @@ export default function ArchivePage() {
       <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-text-primary">Quarterly Index</h2>
-          <button className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors px-2 py-1 rounded border border-border">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            aria-label="Filter (coming soon)"
+            title="Filter (coming soon)"
+            className="flex items-center gap-1.5 text-xs text-text-muted px-2 py-1 rounded border border-border opacity-60 cursor-not-allowed"
+          >
             <Filter size={12} />
             Filter
           </button>
@@ -91,7 +98,13 @@ export default function ArchivePage() {
                 )}
               </span>
               <span className="text-right">
-                <button className="text-xs text-text-muted hover:text-accent transition-colors">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Period detail view (coming soon)"
+                  className="text-xs text-text-muted opacity-60 cursor-not-allowed"
+                >
                   View
                 </button>
               </span>

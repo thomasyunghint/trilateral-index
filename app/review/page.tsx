@@ -733,8 +733,8 @@ export default function ReviewPage() {
         </div>
       </section>
 
-      {/* Validation Summary (shown when all reviewed) */}
-      {stats.pending === 0 && (
+      {/* Validation Summary (shown when all reviewed and there's data) */}
+      {stats.pending === 0 && stats.total > 0 && (
         <section className="mx-auto max-w-5xl px-4 sm:px-6 pb-8">
           <div className="data-card p-4 border-accent/30">
             <div className="flex items-center gap-2 mb-3">

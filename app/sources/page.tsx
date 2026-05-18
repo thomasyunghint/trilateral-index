@@ -459,7 +459,7 @@ export default function SourcesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border border-border rounded-lg px-4 py-3">
                 <div className="text-sm font-medium text-text-primary mb-1">
-                  Text\u2013Hard Convergence
+                  Text&ndash;Hard Convergence
                 </div>
                 <p className="text-xs text-text-muted leading-relaxed">
                   Pearson correlation between text score and hard data score
@@ -484,7 +484,7 @@ export default function SourcesPage() {
                 <p className="text-xs text-text-muted leading-relaxed">
                   Does the trade share deviation predict next-quarter actual
                   trade volume changes? Granger causality test on historical
-                  data (2015\u20132025).
+                  data (2015&ndash;2025).
                 </p>
               </div>
               <div className="border border-border rounded-lg px-4 py-3">
@@ -492,7 +492,7 @@ export default function SourcesPage() {
                   Weight Sensitivity
                 </div>
                 <p className="text-xs text-text-muted leading-relaxed">
-                  Monte Carlo: perturb text/hard weights by \u00b120% (1000
+                  Monte Carlo: perturb text/hard weights by &plusmn;20% (1000
                   draws). Verify composite score ranking is stable across
                   perturbations (rank correlation &gt; 0.95).
                 </p>
@@ -576,7 +576,7 @@ export default function SourcesPage() {
                   <td className="py-2 pr-4 font-mono">Composite</td>
                   <td className="py-2 pr-4">Blended from above</td>
                   <td className="py-2 pr-4">On any source update</td>
-                  <td className="py-2">\u2014</td>
+                  <td className="py-2">&mdash;</td>
                 </tr>
               </tbody>
             </table>

@@ -136,6 +136,18 @@ export function BucketRow({ bucket, scores, granularity: globalGranularity = "Q"
   const cnUs = scores["CN-US"];
   const cnEu = scores["CN-EU"];
   const usEu = scores["US-EU"];
+
+  // Guard: render placeholder if any pair score missing (data error)
+  if (!cnUs || !cnEu || !usEu) {
+    return (
+      <div className="data-card overflow-hidden px-4 py-3">
+        <div className="text-xs text-text-muted">
+          Incomplete data for bucket: <span className="font-mono">{bucket}</span>
+        </div>
+      </div>
+    );
+  }
+
   const avg = (cnUs.composite + cnEu.composite + usEu.composite) / 3;
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Activity,
   TrendingUp,
@@ -123,24 +123,46 @@ export default function BacktestPage() {
   const [selectedPair, setSelectedPair] = useState<string>("all");
   const [selectedLag, setSelectedLag] = useState(1);
 
-  useEffect(() => {
-    fetchBacktest();
-  }, []);
+  // Track current request to abort stale ones (prevents race conditions)
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  async function fetchBacktest(mode = "mock") {
+  const fetchBacktest = useCallback(async (mode = "mock") => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/backtest?mode=${mode}`);
+      const res = await fetch(`/api/backtest?mode=${mode}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: BacktestResult = await res.json();
-      setData(json);
+      // Only update state if this request wasn't aborted
+      if (!controller.signal.aborted) {
+        setData(json);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      if ((e as Error).name !== "AbortError") {
+        setError(e instanceof Error ? e.message : "Unknown error");
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchBacktest();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchBacktest]);
 
   /* Filtered data */
   const filteredCorrelations = useMemo(() => {
@@ -422,8 +444,8 @@ export default function BacktestPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
-              {data.events.map((evt, i) => (
-                <tr key={i} className="hover:bg-bg-hover/30 transition-colors">
+              {data.events.map((evt) => (
+                <tr key={`${evt.date}-${evt.event}-${evt.pair}`} className="hover:bg-bg-hover/30 transition-colors">
                   <td className="py-2 px-3 font-mono text-text-secondary">{evt.date}</td>
                   <td className="py-2 px-3 text-text-primary max-w-[200px] truncate">{evt.event}</td>
                   <td className="py-2 px-3 font-mono text-text-muted">{evt.pair}</td>
@@ -606,7 +628,10 @@ function CorrelationTable({
 }
 
 function LeadLagCard({ profile }: { profile: LeadLagProfile }) {
-  const maxAbs = Math.max(...profile.correlations.map(Math.abs), 0.01);
+  // Guard against empty correlations array (avoids Math.max() returning -Infinity)
+  const maxAbs = profile.correlations.length > 0
+    ? profile.correlations.reduce((m, c) => Math.max(m, Math.abs(c)), 0.01)
+    : 0.01;
 
   return (
     <div className="bg-bg-surface/50 border border-border rounded-lg p-4">

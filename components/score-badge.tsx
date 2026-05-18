@@ -1,5 +1,3 @@
-"use client";
-
 interface ScoreBadgeProps {
   score: number;
   size?: "sm" | "md" | "lg" | "xl";
@@ -8,6 +6,7 @@ interface ScoreBadgeProps {
 }
 
 export function getScoreColor(score: number): string {
+  if (!Number.isFinite(score)) return "text-text-muted";
   if (score >= 30) return "text-cooperation";
   if (score >= 10) return "text-cooperation-weak";
   if (score > -10) return "text-neutral";
@@ -16,6 +15,7 @@ export function getScoreColor(score: number): string {
 }
 
 function getScoreBgStyle(score: number): string {
+  if (!Number.isFinite(score)) return "bg-bg-surface/30";
   if (score >= 10) return "bg-cooperation/10";
   if (score > -10) return "bg-neutral/8";
   return "bg-conflict/10";
@@ -32,17 +32,32 @@ export function ScoreBadge({ score, size = "md", showSign = true, className = ""
   const color = getScoreColor(score);
   const bg = getScoreBgStyle(score);
   const sizeClass = SIZES[size];
-  const sign = showSign && score > 0 ? "+" : "";
+
+  // Guard against NaN/Infinity → display em-dash placeholder
+  if (!Number.isFinite(score)) {
+    return (
+      <span className={`score-value inline-flex items-center rounded ${sizeClass} ${color} ${bg} ${className}`}>
+        &mdash;
+      </span>
+    );
+  }
+
+  // Treat tiny scores as 0 to avoid "-0.0" display
+  const displayScore = Math.abs(score) < 0.05 ? 0 : score;
+  const sign = showSign && displayScore > 0 ? "+" : "";
 
   return (
     <span className={`score-value inline-flex items-center rounded ${sizeClass} ${color} ${bg} ${className}`}>
-      {sign}{score.toFixed(1)}
+      {sign}{displayScore.toFixed(1)}
     </span>
   );
 }
 
 export function DirectionLabel({ score }: { score: number }) {
   const color = getScoreColor(score);
+  if (!Number.isFinite(score)) {
+    return <span className={`text-xs uppercase tracking-wider font-mono ${color}`}>No data</span>;
+  }
   let label: string;
   if (score >= 50) label = "Strong Cooperation";
   else if (score >= 15) label = "Cooperation";

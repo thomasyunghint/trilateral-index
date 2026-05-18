@@ -60,8 +60,11 @@ function edgeWidth(score: number): number {
 function tickLabel(period: string, granularity: Granularity): string {
   if (granularity === "Q") return period.replace("20", "'");
   const [y, m] = period.split("-");
+  if (!y || !m) return period; // malformed period
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${months[parseInt(m) - 1]} '${y.slice(2)}`;
+  const monthIdx = parseInt(m, 10) - 1;
+  if (monthIdx < 0 || monthIdx > 11 || isNaN(monthIdx)) return period;
+  return `${months[monthIdx]} '${y.slice(2)}`;
 }
 
 export function TrilateralDiagram({
@@ -76,7 +79,17 @@ export function TrilateralDiagram({
   setIsPlaying,
 }: TrilateralDiagramProps) {
   const data = getTimelineData(granularity);
-  const safeIdx = Math.min(timelineIdx, data.length - 1);
+
+  // Guard against empty data (avoids data[-1] crash)
+  if (data.length === 0) {
+    return (
+      <div className={`${className} text-xs text-text-muted text-center py-8`}>
+        No timeline data available
+      </div>
+    );
+  }
+
+  const safeIdx = Math.max(0, Math.min(timelineIdx, data.length - 1));
   const current = data[safeIdx];
   const isLive = safeIdx === data.length - 1;
 
@@ -109,7 +122,8 @@ export function TrilateralDiagram({
           const color = edgeColor(score);
           const width = edgeWidth(score);
           const isSelected = selectedPair === pair;
-          const isDimmed = selectedPair !== null && !isSelected;
+          // Use != null (loose) to handle both null AND undefined props
+          const isDimmed = selectedPair != null && !isSelected;
           const f = NODES[from];
           const t = NODES[to];
           const mx = (f.x + t.x) / 2;
