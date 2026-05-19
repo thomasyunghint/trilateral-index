@@ -208,7 +208,15 @@ body {
   align-items: center;
 }
 .signal-hero-tags span { color: rgb(var(--ink-2)); }
-.signal-hero-refresh { color: rgb(var(--ink-4)); }
+.signal-hero-refresh {
+  color: rgb(var(--ink-2));
+  font-weight: 500;
+}
+.signal-age-fresh { color: rgb(var(--ink-4)); font-weight: 400; }
+.signal-age-stale {
+  color: rgb(var(--warning-1));
+  font-weight: 500;
+}
 
 .signal-hero-headline {
   padding: 28px;

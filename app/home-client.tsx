@@ -202,11 +202,14 @@ function CredibilityPanel({ cred }: { cred: Credibility }) {
   const composite5 = (cred.composite * 5);
   const filled = Math.round(composite5);
   const stars = "●".repeat(filled) + "○".repeat(5 - filled);
+  // Label tied to the visible star count so "3/5" never claims to be "High".
   const compositeLabel =
-    cred.composite >= 0.8 ? "High"
-    : cred.composite >= 0.6 ? "Moderate-High"
-    : cred.composite >= 0.4 ? "Moderate"
-    : "Low";
+    filled >= 5 ? "High"
+    : filled === 4 ? "Moderate-High"
+    : filled === 3 ? "Moderate"
+    : filled === 2 ? "Weak"
+    : filled === 1 ? "Poor"
+    : "Insufficient";
 
   const rows: Array<[string, number, string]> = [
     ["Source tier", cred.sourceTier, cred.tierLabel || "—"],
@@ -634,13 +637,16 @@ function Sparkline({
   const trendMax = Math.max(...allMeans);
   const totalClaims = daily.reduce((s, d) => s + d.count, 0);
 
+  // Compute actual span shown so the label reflects reality, not a hardcoded 90d.
+  const spanDays = Math.max(1, Math.round((xMax - xMin) / 86400_000));
   return (
     <section className="signal-hero-section sparkline-section">
-      <div className="signal-hero-section-label">Source baseline · 90 days</div>
+      <div className="signal-hero-section-label">Source baseline · {spanDays} days</div>
       <p className="sparkline-explainer">
-        Daily mean direction for this source on this pair. Each dot is one day,
-        sized by the number of claims published; <strong>diamonds</strong> mark
-        the dates of the flip captured above.
+        Daily mean direction for this source on this pair across {fmtDay(xMin)}
+        &nbsp;–&nbsp;{fmtDay(xMax)}. Each dot is one day, sized by the number of
+        claims published; <strong>diamonds</strong> mark the dates of the flip
+        captured above.
       </p>
 
       <div className="sparkline-container">
@@ -855,6 +861,40 @@ function MethodologyBlock({ signal }: { signal: SignalRow }) {
    ───────────────────────────────────────────────────────────── */
 
 function SignalHero({ signal }: { signal: SignalRow }) {
+  // Capture `now` via lazy state init — React 19 purity rule allows this
+  // pattern (state init is exempt from purity, unlike useMemo bodies).
+  // Value stays stable for the lifetime of the mount.
+  const [nowMs] = useState(() => Date.now());
+
+  const claimDates: number[] = [];
+  for (const c of signal.claims) {
+    if (!c.date) continue;
+    const t = new Date(c.date).getTime();
+    if (Number.isFinite(t)) claimDates.push(t);
+  }
+  const latestClaimTs = claimDates.length > 0 ? Math.max(...claimDates) : null;
+  const latestClaimIso = latestClaimTs !== null
+    ? new Date(latestClaimTs).toISOString()
+    : null;
+  const ageDays = latestClaimTs !== null
+    ? Math.floor((nowMs - latestClaimTs) / 86400_000)
+    : null;
+  let ageLabel = "—";
+  if (ageDays !== null) {
+    if (ageDays < 1) ageLabel = "today";
+    else if (ageDays === 1) ageLabel = "yesterday";
+    else if (ageDays < 7) ageLabel = `${ageDays} days ago`;
+    else if (ageDays < 30) {
+      const w = Math.floor(ageDays / 7);
+      ageLabel = `${w} week${w === 1 ? "" : "s"} ago`;
+    } else if (ageDays < 365) {
+      ageLabel = `${Math.floor(ageDays / 30)} mo ago`;
+    } else {
+      ageLabel = `${Math.floor(ageDays / 365)} yr ago`;
+    }
+  }
+  const isStale = ageDays !== null && ageDays > 60;
+
   return (
     <article className="signal-hero" id={`signal-${signal.rank}`}>
       <div className="signal-hero-header">
@@ -868,7 +908,12 @@ function SignalHero({ signal }: { signal: SignalRow }) {
             {patternLabel(signal.pattern_type)}
           </span>
         </span>
-        <span className="signal-hero-refresh">↻ {formatRelativeTime(signal.detected_at)}</span>
+        <span className="signal-hero-refresh" title={`Event date: ${latestClaimIso ? formatDateShort(latestClaimIso) : "unknown"} · Detected ${formatRelativeTime(signal.detected_at)}`}>
+          {latestClaimIso ? formatDateShort(latestClaimIso) : "—"}
+          <span className={isStale ? "signal-age-stale" : "signal-age-fresh"}>
+            {" · "}{ageLabel}
+          </span>
+        </span>
       </div>
 
       <h2 className="signal-hero-headline">{signal.headline}</h2>

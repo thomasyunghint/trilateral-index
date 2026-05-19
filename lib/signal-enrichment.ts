@@ -181,13 +181,60 @@ async function fetchBaselineSigma(
 }
 
 /**
- * Fetch sparkline data: all claims from this source on this pair
- * over the past 90 days, sorted by date.
+ * Fetch sparkline data: claims from this source on this pair,
+ * windowed so the signal's flip date is always visible.
+ *
+ * Strategy:
+ *   - If the signal has a refDate, the window is refDate ± 45 days. This
+ *     puts the flip in the middle of the chart and gives readers the
+ *     surrounding baseline context on both sides.
+ *   - If refDate is missing or unparseable, fall back to the last 90 days.
+ *   - When refDate is very recent (so the future side of the window is
+ *     truncated by NOW()), the window extends 90 days BACKWARDS from
+ *     refDate so we always show ~90 days of historical context.
+ *
+ * This fixes the v1 bug where flips dated months ago fell outside a
+ * "last 90 days from today" window — the diamonds caption promised flip
+ * markers that never appeared because the data was out of range.
  */
 async function fetchSparkline(
   sql: NeonQueryFunction<false, false>,
   ctx: SignalContext,
 ): Promise<Array<{ date: string; direction: number }>> {
+  const HALF_WINDOW_DAYS = 45;
+  const BACKFALL_DAYS = 90;
+
+  let windowStart: Date;
+  let windowEnd: Date;
+
+  const refTs = ctx.refDate ? new Date(ctx.refDate).getTime() : NaN;
+  if (Number.isFinite(refTs)) {
+    const ref = new Date(refTs);
+    windowStart = new Date(ref.getTime() - HALF_WINDOW_DAYS * 86400_000);
+    const futureEnd = new Date(ref.getTime() + HALF_WINDOW_DAYS * 86400_000);
+    const now = new Date();
+    // If the future side of the window goes past today, just clamp to
+    // today and extend the window backwards so we always show ~90 days
+    // of context around the flip.
+    if (futureEnd > now) {
+      windowEnd = now;
+      windowStart = new Date(now.getTime() - BACKFALL_DAYS * 86400_000);
+      if (ref.getTime() < windowStart.getTime()) {
+        // Flip is older than the back-fall — keep it centred anyway.
+        windowStart = new Date(ref.getTime() - HALF_WINDOW_DAYS * 86400_000);
+      }
+    } else {
+      windowEnd = futureEnd;
+    }
+  } else {
+    const now = new Date();
+    windowEnd = now;
+    windowStart = new Date(now.getTime() - BACKFALL_DAYS * 86400_000);
+  }
+
+  const startIso = windowStart.toISOString();
+  const endIso = windowEnd.toISOString();
+
   const rows = (await sql`
     SELECT a.published_at as date, c.direction
     FROM claims c
@@ -195,9 +242,9 @@ async function fetchSparkline(
     WHERE a.status = 'extracted'
       AND a.source_name = ${ctx.primarySource}
       AND ${ctx.pair} = ANY(c.pairs)
-      AND a.published_at > NOW() - INTERVAL '90 days'
+      AND a.published_at BETWEEN ${startIso} AND ${endIso}
     ORDER BY a.published_at ASC
-    LIMIT 100
+    LIMIT 200
   `) as Array<{ date: string | null; direction: number }>;
 
   return rows

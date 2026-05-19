@@ -195,16 +195,42 @@ async function buildHeatmap(sql: ReturnType<typeof getDb>): Promise<HeatmapCell[
   return cells;
 }
 
+function latestClaimDate(ev: StoredEvidence): number {
+  const claims = ev.claims || [];
+  let max = 0;
+  for (const c of claims) {
+    if (!c.date) continue;
+    const t = new Date(c.date).getTime();
+    if (Number.isFinite(t) && t > max) max = t;
+  }
+  return max;
+}
+
 export default async function HomePage() {
   const sql = getDb();
 
-  const rawSignals = (await sql`
+  // Fetch a larger candidate pool, then rank by EVENT RECENCY (latest claim
+  // date in the signal's evidence). detected_at is when the cron last ran;
+  // what matters editorially is when the underlying event happened.
+  const rawCandidates = (await sql`
     SELECT id, pattern_type, score, title, summary, evidence, detected_at
     FROM signals
     WHERE status = 'SIGNAL'
-    ORDER BY detected_at ASC, score DESC
-    LIMIT 10
+    ORDER BY detected_at DESC, score DESC
+    LIMIT 40
   `) as DbSignal[];
+
+  const rankedCandidates = [...rawCandidates]
+    .map((s) => ({ s, recency: latestClaimDate(safeEvidence(s.evidence)) }))
+    .sort((a, b) => {
+      // Primary: latest claim date (newest event first)
+      if (b.recency !== a.recency) return b.recency - a.recency;
+      // Tie-break on score
+      return b.s.score - a.s.score;
+    })
+    .map((x) => x.s);
+
+  const rawSignals = rankedCandidates.slice(0, 10);
 
   // Batch-fetch article URLs+titles for all primary evidence claims across all signals
   const allClaimIds = rawSignals.flatMap((s) => (safeEvidence(s.evidence).claims || []).map((c) => c.id));
