@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { ModeProvider } from "@/components/mode-context";
-import { Navbar } from "@/components/navbar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,14 +17,15 @@ const jetbrainsMono = JetBrains_Mono({
 const playfairDisplay = Playfair_Display({
   variable: "--font-playfair-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Meridian — Trilateral Geoeconomic Fragmentation Index",
+  title: "TGFI — Trilateral Geoeconomic Fragmentation Index",
   description:
-    "Real-time composite index tracking geoeconomic fragmentation across China-US-EU bilateral relationships. 6 dimensions, 3 analytical layers.",
+    "An insight engine surfacing patterns across China-US-EU economic and political claims, sourced from leading think tanks and policy institutes.",
+  robots: "noindex, nofollow",
 };
 
 export default function RootLayout({
@@ -39,12 +38,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable}`}
     >
-      <body className="min-h-screen font-sans">
-        <ModeProvider>
-          <Navbar />
-          <main>{children}</main>
-        </ModeProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

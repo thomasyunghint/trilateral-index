@@ -1,377 +1,285 @@
-import {
-  BookOpen,
-  FileText,
-  Database,
-  Layers,
-  Scale,
-  ExternalLink,
-  ChevronRight,
-} from "lucide-react";
+/**
+ * Methodology — How TGFI works.
+ * Single scrollable rubric covering detection rules, credibility scoring,
+ * source tiers, and the analytical pipeline.
+ */
+import Link from "next/link";
 
-const BUCKETS_DATA = [
-  {
-    name: "Trade",
-    text: 30,
-    hard: 70,
-    papers: [
-      { authors: "Anderson & van Wincoop", year: 2003, title: "Gravity with Gravitas", journal: "AER" },
-      { authors: "Aiyar, Malacrino & Presbitero", year: 2024, title: "Investing in Friends", journal: "European J. Political Economy" },
-    ],
-    hardSources: "OECD Monthly International Merchandise Trade (SDMX API)",
-    rationale: "Trade is the most data-rich bucket. OECD bilateral trade statistics are available monthly. Gravity model literature demonstrates flows are well-explained by structural economic variables.",
-  },
-  {
-    name: "Investment",
-    text: 40,
-    hard: 60,
-    papers: [
-      { authors: "Kalinova, Palerm & Thomsen", year: 2010, title: "OECD FDI Restrictiveness Index", journal: "OECD Working Paper" },
-      { authors: "Mistura & Roulet", year: 2019, title: "The Determinants of FDI", journal: "OECD Working Paper" },
-    ],
-    hardSources: "OECD FDI Statistics by partner, OECD FDI Regulatory Restrictiveness Index",
-    rationale: "Investment data is quarterly (not monthly), creating more lag. CFIUS/EU screening decisions appear in text before statistics.",
-  },
-  {
-    name: "Technology",
-    text: 60,
-    hard: 40,
-    papers: [
-      { authors: "Jinji & Ozawa", year: 2024, title: "Economic Consequences of US-China Decoupling", journal: "CEPR/RIETI" },
-      { authors: "Gentzkow, Kelly & Taddy", year: 2019, title: "Text as Data", journal: "J. Economic Literature" },
-    ],
-    hardSources: "WIPO patent filings, OECD MSTI, US BIS Entity List",
-    rationale: "Export controls are policy signals first. Patent data lags 18+ months. Technology cooperation/conflict is narrative-driven.",
-  },
-  {
-    name: "Finance",
-    text: 25,
-    hard: 75,
-    papers: [
-      { authors: "Chinn & Ito", year: 2006, title: "KAOPEN Financial Openness Index", journal: "J. Development Economics" },
-      { authors: "Cipriani, Goldberg & La Spada", year: 2023, title: "Financial Sanctions, SWIFT, and the International Payment System", journal: "J. Economic Perspectives" },
-    ],
-    hardSources: "IMF COFER, BIS Triennial Survey, SWIFT RMB Tracker",
-    rationale: "Finance is the most data-rich bucket after Trade. Exchange rates, reserves, and capital flows are available at daily-to-monthly frequency.",
-  },
-  {
-    name: "Leverage",
-    text: 80,
-    hard: 20,
-    papers: [
-      { authors: "Farrell & Newman", year: 2019, title: "Weaponized Interdependence", journal: "International Security" },
-      { authors: "Clayton, Maggiori & Schoar", year: 2024, title: "A Theory of Economic Coercion and Fragmentation", journal: "BIS Working Paper" },
-    ],
-    hardSources: "USGS Mineral Summaries, IEA Energy Security, Eurostat CRM",
-    rationale: "No bilateral leverage index exists. Weaponization is inherently about threats and actions, which are text events. Hard data measures vulnerability, not weaponization itself.",
-  },
-  {
-    name: "Policy",
-    text: 50,
-    hard: 50,
-    papers: [
-      { authors: "Baker, Bloom & Davis", year: 2016, title: "Measuring Economic Policy Uncertainty", journal: "QJE" },
-      { authors: "Caldara & Iacoviello", year: 2022, title: "Measuring Geopolitical Risk", journal: "AER" },
-    ],
-    hardSources: "GDELT 2.0 Events, UN Ideal Point Distance, Treaty databases",
-    rationale: "Policy is dual-natured: announcements are text, but GDELT event counts and UN voting alignment provide structured hard data.",
-  },
-];
+export const metadata = {
+  title: "Methodology — TGFI",
+};
 
-const LAYERS = [
-  {
-    number: 1,
-    name: "Data Collection",
-    description: "Gather, clean, classify raw inputs from text and structured sources",
-    academic: "DIKW Pyramid (Rowley 2007), Gentzkow/Kelly/Taddy (JEL 2019) Text as Data, CAMEO/GDELT event coding",
-    operations: ["Article ingestion from Tier 1-3 sources", "LLM-as-Classifier with forced citation", "2-round fact-check verification", "Hard data API ingestion (OECD SDMX, GDELT)"],
-  },
-  {
-    number: 2,
-    name: "Unearth the Numbers",
-    description: "Quantitative analysis, scoring, normalization, and composite blending",
-    academic: "OECD Handbook on Composite Indicators (2008), Chinn-Ito KAOPEN PCA methodology, BACE (Sala-i-Martin et al. AER 2004)",
-    operations: ["Text score aggregation (Tier x Confidence x Recency weights)", "Hard data normalization (min-max to [-100, +100])", "Composite blending (bucket-specific text/hard weights)", "Cross-method convergence measurement"],
-  },
-  {
-    number: 3,
-    name: "Synthesis",
-    description: "Macro interpretation, cross-bucket patterns, narrative generation",
-    academic: "Heuer & Pherson (2010) Structured Analytic Techniques, CIA Tradecraft Primer (2009), GEOII multi-dimensional synthesis",
-    operations: ["Cross-bucket convergence detection", "Cross-pair triangulation analysis", "Event-driven narrative linking", "Anomaly flagging (convergence < 0.3)"],
-  },
-];
+const SOURCE_COUNT = 9;
+const MAX_CLAIMS_PER_ARTICLE = 30;
 
 export default function MethodologyPage() {
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <section className="border-b border-border">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-2">
-            <BookOpen size={12} />
-            <span>Academic Foundations</span>
+    <div>
+      <header className="tgfi-masthead">
+        <div className="tgfi-container">
+          <h1 className="tgfi-masthead-title">Methodology</h1>
+          <div className="tgfi-masthead-meta">
+            <span>TGFI detection engine</span>
+            <span>Version 1.0</span>
+            <span>Last revised May 2026</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl tracking-tight text-text-primary">
-            Methodology
-          </h1>
-          <p className="mt-4 text-base text-text-secondary max-w-2xl leading-relaxed">
-            Every weight, formula, and analytical choice in TGFI is grounded in
-            peer-reviewed literature. 30 papers across 6 dimensions, following the OECD
-            Handbook on Constructing Composite Indicators (2008) framework.
+        </div>
+      </header>
+
+      <div className="tgfi-container-narrow" style={{ paddingTop: 48, paddingBottom: 80 }}>
+        <section style={{ marginBottom: 56 }}>
+          <p style={{
+            fontSize: 18, lineHeight: 1.65, color: "rgb(var(--ink-1))",
+            fontFamily: "var(--font-playfair-display), Georgia, serif",
+            fontStyle: "italic",
+            margin: "0 0 24px 0",
+          }}>
+            TGFI is an insight engine — not an index. Rather than aggregate sentiment into one
+            scalar, it surfaces specific patterns across statements made by leading think tanks
+            and policy institutes on China-US-EU economic and political relations.
           </p>
-        </div>
-      </section>
+          <p style={{ fontSize: 15, lineHeight: 1.7, color: "rgb(var(--ink-2))" }}>
+            Every signal you see on the home page is the output of a deterministic detection rule
+            applied to a corpus of structured claims extracted from primary sources. The pipeline
+            runs continuously: new articles are ingested every 30 minutes, claims are extracted
+            within 5 minutes of arrival, and patterns are re-detected every 12 hours.
+          </p>
+        </section>
 
-      {/* 3-Layer Framework */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Layers size={16} className="text-accent" />
-          <h2 className="text-lg font-medium text-text-primary">3-Layer Analytical Framework</h2>
-        </div>
+        <Section number="01" title="Pipeline">
+          <p>Four stages, each independently verifiable.</p>
+          <ol className="method-list">
+            <li>
+              <strong>Ingest.</strong> A cron worker polls RSS feeds and HTML archives from {SOURCE_COUNT}{" "}
+              primary sources every 30 minutes. New articles are stored with full text where the
+              source permits programmatic access. URL-based deduplication.
+            </li>
+            <li>
+              <strong>Extract.</strong> A claim extractor (Claude Haiku 4.5) processes pending articles
+              one at a time, producing structured records: claim text, verbatim quote,
+              direction in [&minus;100, +100], bucket weights, pairs. At most {MAX_CLAIMS_PER_ARTICLE}{" "}
+              claims per article. Articles with no in-scope claims are marked as skipped, not failed.
+            </li>
+            <li>
+              <strong>Detect.</strong> Three deterministic rules run over the extracted claim corpus
+              every 12 hours: Temporal Flip, Source Disagreement, Cross-Bucket Divergence. Each
+              rule emits zero or more signals that pass a numeric threshold.
+            </li>
+            <li>
+              <strong>Interpret.</strong> The top five signals per cycle receive a 3&ndash;4 sentence
+              analysis brief drafted by Claude Sonnet 4. The brief is summary text; the underlying
+              pattern detection is rule-based and reproducible.
+            </li>
+          </ol>
+        </Section>
 
-        <div className="space-y-3">
-          {LAYERS.map((layer) => (
-            <div key={layer.number} className="data-card overflow-hidden">
-              <div className="flex items-start gap-4 p-4">
-                {/* Layer number */}
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-accent/10 border border-accent/20">
-                  <span className="text-sm font-mono font-bold text-accent">
-                    {layer.number}
-                  </span>
-                </div>
+        <Section number="02" title="Detection rules">
+          <Rule
+            name="Temporal Flip"
+            spec="|Δ direction| ≥ 60 within 45 days, same source × same pair, different articles, Jaccard topic similarity ≥ 0.12"
+            describes="A source materially changes its position on a bilateral relationship within a short window."
+          />
+          <Rule
+            name="Source Disagreement"
+            spec="Direction gap ≥ 40 points across two distinct sources, same pair × same dominant bucket, topic similarity ≥ 0.12"
+            describes="Two credible analysts reach opposite conclusions on the same trajectory."
+          />
+          <Rule
+            name="Cross-Bucket Divergence"
+            spec="Bucket-pair direction gap ≥ 50 points within the same bilateral pair, at least 2 claims per bucket"
+            describes="Cooperation in one dimension (e.g. Trade) while restriction in another (e.g. Technology) for the same country pair."
+          />
+          <p style={{ fontSize: 13, color: "rgb(var(--ink-3))", marginTop: 16 }}>
+            Source code:{" "}
+            <a href="https://github.com/thomasyunghint/trilateral-index/blob/main/lib/detector.ts"
+               style={{ color: "rgb(var(--accent-1))" }} target="_blank" rel="noopener noreferrer">
+              lib/detector.ts
+            </a>
+          </p>
+        </Section>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-medium text-text-primary">{layer.name}</h3>
-                  </div>
-                  <p className="text-xs text-text-secondary mt-0.5">{layer.description}</p>
+        <Section number="03" title="Credibility scoring">
+          <p>
+            Each signal carries a composite credibility score on a 0–5 scale, computed from
+            five orthogonal factors. The score is shown as both a 5-bar breakdown and a
+            star-equivalent rating.
+          </p>
+          <div className="method-grid" style={{ marginTop: 16 }}>
+            <CredFactor name="Source tier" weight="0.20" rule="T1-Academic (NBER, BIS) = 1.0; T1-Advisory (Bruegel, MERICS, PIIE, Rhodium) = 1.0; T2-Policy (ECFR, CF40) = 0.65" />
+            <CredFactor name="Source diversity" weight="0.20" rule="Distinct sources contributing claims to the signal, capped at 3. 1 source = 0.33; 2 sources = 0.67; 3+ = 1.0" />
+            <CredFactor name="Sample size" weight="0.20" rule="Number of claims contributing to the signal, capped at 4. N=2 = 0.5; N=4+ = 1.0" />
+            <CredFactor name="Detection margin" weight="0.20" rule="How far above the rule's threshold the signal is. Δ=60 (threshold) → 0.5; Δ=80 → 1.0" />
+            <CredFactor name="Reproducibility" weight="0.20" rule="Always 1.0: detection is deterministic on a fixed corpus. Same inputs → same signals." />
+          </div>
+          <p style={{ fontSize: 13, color: "rgb(var(--ink-3))", marginTop: 20 }}>
+            Note: credibility measures the <em>signal&rsquo;s</em> rigor, not the truthfulness of the
+            underlying claims. A high credibility score means the pattern is solid — not that the
+            source is right.
+          </p>
+        </Section>
 
-                  {/* Academic basis */}
-                  <div className="mt-2 text-[11px] text-text-muted">
-                    <span className="text-accent/70 font-mono text-[10px] uppercase tracking-wider">
-                      Academic basis:
-                    </span>{" "}
-                    {layer.academic}
-                  </div>
+        <Section number="04" title="Favorability">
+          <p>Each claim carries a direction score in [&minus;100, +100]:</p>
+          <ul className="method-list">
+            <li><strong>+50 to +100:</strong> Strong cooperation. Author argues for deepening ties, joint policy, mutual benefit.</li>
+            <li><strong>+10 to +49:</strong> Weak cooperation. Cautious optimism, alignment of interests, modest progress.</li>
+            <li><strong>&minus;9 to +9:</strong> Neutral / observational. Descriptive, no clear direction.</li>
+            <li><strong>&minus;10 to &minus;49:</strong> Weak conflict. Decoupling, friction, competing interests.</li>
+            <li><strong>&minus;50 to &minus;100:</strong> Strong conflict. Sanctions, hostile rhetoric, fundamental incompatibility.</li>
+          </ul>
+          <p style={{ marginTop: 16 }}>
+            Direction is assigned by the claim extractor based on the verbatim wording and stance
+            of the source author. Hedged language attenuates magnitude.
+          </p>
+          <p>
+            Each signal displays the Δ direction with a 95% confidence interval, estimated at
+            approximately ±8% of the absolute shift (or ±5 points, whichever is larger).
+          </p>
+        </Section>
 
-                  {/* Operations */}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {layer.operations.map((op) => (
-                      <span
-                        key={op}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-bg-surface text-text-muted border border-border/50"
-                      >
-                        <ChevronRight size={8} />
-                        {op}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+        <Section number="05" title="Baseline volatility">
+          <p>
+            For each Temporal Flip signal, TGFI computes how anomalous the shift is relative
+            to the source&rsquo;s normal volatility on this pair × bucket. We pull all claims from
+            the source over the past 365 days that share the same dominant bucket and the same
+            bilateral pair, compute the sample standard deviation σ of their direction scores,
+            and report the signal&rsquo;s Δ as a multiple of σ.
+          </p>
+          <p>
+            A signal flagged &ldquo;4.7σ above normal&rdquo; means the observed shift is 4.7
+            times the source&rsquo;s typical direction volatility. If fewer than 5 historical
+            claims exist, the baseline is omitted (insufficient sample).
+          </p>
+        </Section>
 
-      {/* Per-Bucket Methodology */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 border-t border-border">
-        <div className="flex items-center gap-2 mb-6">
-          <Scale size={16} className="text-accent" />
-          <h2 className="text-lg font-medium text-text-primary">Per-Dimension Weight Justification</h2>
-        </div>
+        <Section number="06" title="Dissenting evidence">
+          <p>
+            For each surfaced signal, TGFI also queries the corpus for{" "}
+            <strong>counter-claims</strong>: statements from other sources, in the same time
+            window, on the same pair × bucket, with direction opposite to the signal&rsquo;s
+            trajectory (gap ≥ 40 points). Up to two are displayed.
+          </p>
+          <p>
+            This is not a falsification test. It is a transparency mechanism: the reader can see
+            whether the signal represents broad consensus or a unilateral repositioning by one
+            source. Absence of counter-claims is itself informative.
+          </p>
+        </Section>
 
-        <div className="space-y-3">
-          {BUCKETS_DATA.map((bucket) => (
-            <details key={bucket.name} className="data-card group">
-              <summary className="flex items-center gap-4 p-4 cursor-pointer hover:bg-bg-hover/30 transition-colors">
-                <div className="w-28 shrink-0">
-                  <div className="text-sm font-medium text-text-primary">{bucket.name}</div>
-                </div>
+        <Section number="07" title="Source selection">
+          <p>
+            TGFI sources are restricted to T1 academic publishers and T1/T2 think tanks and
+            policy institutes. Newspaper opinion pieces, blog posts, and individual analyst
+            tweets are explicitly excluded.
+          </p>
+          <p>
+            See <Link href="/sources" style={{ color: "rgb(var(--accent-1))" }}>Sources</Link>{" "}
+            for the live ingest feed by source, including tier classifications and access status.
+          </p>
+        </Section>
 
-                {/* Weight bar */}
-                <div className="flex-1 flex items-center gap-2">
-                  <div className="flex h-2 flex-1 rounded-full overflow-hidden bg-bg-surface">
-                    <div
-                      className="bg-accent/40 rounded-l-full"
-                      style={{ width: `${bucket.text}%` }}
-                    />
-                    <div
-                      className="bg-accent rounded-r-full"
-                      style={{ width: `${bucket.hard}%` }}
-                    />
-                  </div>
-                  <div className="w-24 text-right shrink-0">
-                    <span className="font-mono text-xs text-text-muted">
-                      {bucket.text}/{bucket.hard}
-                    </span>
-                  </div>
-                </div>
+        <Section number="08" title="Known limitations">
+          <ul className="method-list">
+            <li>
+              <strong>Source distribution.</strong> Roughly two-thirds of current claims come from
+              ECFR, with Bruegel a distant second. The detection engine does not yet compensate
+              for source frequency. We are working on rebalancing.
+            </li>
+            <li>
+              <strong>PIIE / RAND access.</strong> Both block programmatic fetches with HTTP 403.
+              For these sources, only RSS descriptions (~50&ndash;100 words) are available.
+            </li>
+            <li>
+              <strong>Interpretation is generative.</strong> The Sonnet-drafted briefs summarize
+              the detected pattern in natural language. The summary should not be treated as a
+              causal explanation; it is descriptive scaffolding on top of the rule-based detection.
+            </li>
+            <li>
+              <strong>EU-internal claims.</strong> Some sources comment on EU policy without
+              reference to a trilateral pair. These may produce noisy heatmap cells.
+            </li>
+          </ul>
+        </Section>
 
-                <ChevronRight
-                  size={14}
-                  className="text-text-muted transition-transform duration-200 group-open:rotate-90"
-                />
-              </summary>
-
-              <div className="border-t border-border p-4 bg-bg-primary/50 space-y-3">
-                {/* Rationale */}
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  {bucket.rationale}
-                </p>
-
-                {/* Weight details */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider">
-                      <FileText size={10} />
-                      Text Weight: {bucket.text}%
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-[10px] text-text-muted uppercase tracking-wider">
-                      <Database size={10} />
-                      Hard Data: {bucket.hard}%
-                    </div>
-                    <div className="text-[11px] text-text-muted">{bucket.hardSources}</div>
-                  </div>
-                </div>
-
-                {/* Papers */}
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="text-[10px] text-text-muted uppercase tracking-wider">
-                    Key References
-                  </div>
-                  {bucket.papers.map((paper, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs">
-                      <ExternalLink size={10} className="text-accent/50 mt-0.5 shrink-0" />
-                      <span className="text-text-secondary">
-                        {paper.authors} ({paper.year}). &ldquo;{paper.title}.&rdquo;{" "}
-                        <em className="text-text-muted">{paper.journal}</em>.
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      {/* Classification Criteria */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 border-t border-border">
-        <div className="flex items-center gap-2 mb-2">
-          <FileText size={16} className="text-accent" />
-          <h2 className="text-lg font-medium text-text-primary">Text Classification Criteria</h2>
-        </div>
-        <p className="text-xs text-text-secondary mb-4 max-w-2xl leading-relaxed">
-          Each article is tagged with 1&ndash;3 criteria codes identifying the specific trade mechanism documented.
-          Scores reflect the magnitude of the strongest signal, not the number of tags.
-          Full operational definitions, boundary conditions, and worked examples are in the internal codebook.
+        <p style={{ marginTop: 64, fontSize: 12, color: "rgb(var(--ink-4))", fontFamily: "var(--font-jetbrains-mono), monospace" }}>
+          Project repository:{" "}
+          <a href="https://github.com/thomasyunghint/trilateral-index"
+             style={{ color: "rgb(var(--ink-3))" }} target="_blank" rel="noopener noreferrer">
+            github.com/thomasyunghint/trilateral-index
+          </a>
         </p>
+      </div>
 
-        {/* Fragmentation */}
-        <div className="mb-4">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-conflict mb-2 border-b border-conflict/30 pb-1">
-            Fragmentation Signals
+      <footer className="tgfi-footer">
+        <div className="tgfi-container">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>TGFI Methodology</span>
+            <span>
+              <Link href="/">← Back to signals</Link>
+              <span style={{ margin: "0 12px", color: "rgb(var(--ink-5))" }}>·</span>
+              <Link href="/sources">Sources</Link>
+            </span>
           </div>
-          <div className="space-y-1.5">
-            {[
-              { id: "T-FRAG-01", label: "Tariff Increase", def: "Imposition or escalation of tariffs on goods between the country pair" },
-              { id: "T-FRAG-02", label: "Export Controls", def: "Restrictions on export of goods, materials, or technologies (licensing, bans, quotas)" },
-              { id: "T-FRAG-03", label: "Trade Decline (Quantified)", def: "Quantified decline in trade flows \u2014 volume, value, or share. CGE/gravity model simulations qualify" },
-              { id: "T-FRAG-04", label: "Trade Diversion", def: "Trade redirecting to third-party countries due to bilateral barriers" },
-              { id: "T-FRAG-05", label: "Non-Tariff Barriers", def: "CVDs, anti-dumping, CBAM, TBT, SPS measures, local content requirements" },
-              { id: "T-FRAG-06", label: "Supply Chain Decoupling", def: "Reshoring, nearshoring, or strategic diversification of production networks" },
-              { id: "T-FRAG-07", label: "Sanctions / Embargo", def: "Full or near-total trade prohibitions, entity list blocks, comprehensive sanctions" },
-            ].map((c) => (
-              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-conflict/5 border border-conflict/10">
-                <span className="font-mono text-[11px] text-conflict shrink-0 mt-0.5 w-24">{c.id}</span>
-                <div>
-                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
-                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Cooperation */}
-        <div className="mb-4">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-cooperation mb-2 border-b border-cooperation/30 pb-1">
-            Cooperation Signals
-          </div>
-          <div className="space-y-1.5">
-            {[
-              { id: "T-COOP-01", label: "Tariff Reduction", def: "Reduction, suspension, or elimination of tariffs between the pair" },
-              { id: "T-COOP-02", label: "Trade Agreement", def: "Negotiation, signing, or implementation of FTA, customs union, MRA, or preferential arrangement" },
-              { id: "T-COOP-03", label: "Trade Growth (Quantified)", def: "Quantified increase in trade flows. CGE/gravity model simulations qualify" },
-              { id: "T-COOP-04", label: "Dispute Resolution", def: "Resolution of trade disputes through WTO DSB, bilateral negotiation, or arbitration" },
-              { id: "T-COOP-05", label: "Trade Facilitation", def: "Customs simplification, standards harmonization, digital trade infrastructure" },
-              { id: "T-COOP-06", label: "Joint Initiative", def: "Cooperative joint efforts: shared regulatory frameworks, coordinated policy, supply chain partnerships" },
-            ].map((c) => (
-              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-cooperation/5 border border-cooperation/10">
-                <span className="font-mono text-[11px] text-cooperation shrink-0 mt-0.5 w-24">{c.id}</span>
-                <div>
-                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
-                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Quality + Other */}
-        <div className="mb-2">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-2 border-b border-border pb-1">
-            Quality Flags &amp; Other
-          </div>
-          <div className="space-y-1.5">
-            {[
-              { id: "T-OTHER", label: "Other Trade Signal", def: "Evidence through a channel not captured above (price impact, uncertainty indices). Used as secondary tag" },
-              { id: "T-QUAL-01", label: "Wrong Bucket", def: "Content is not about trade in goods (services, finance, climate, security)" },
-              { id: "T-QUAL-02", label: "Wrong Pair", def: "Primary focus is on a different country pair than assigned" },
-              { id: "T-QUAL-03", label: "Insufficient Evidence", def: "On-topic but too little evidence for a confident score" },
-            ].map((c) => (
-              <div key={c.id} className="flex items-start gap-3 py-1.5 px-3 rounded bg-bg-surface border border-border/50">
-                <span className="font-mono text-[11px] text-text-muted shrink-0 mt-0.5 w-24">{c.id}</span>
-                <div>
-                  <span className="text-xs font-medium text-text-primary">{c.label}</span>
-                  <span className="text-[11px] text-text-muted ml-1.5">&mdash; {c.def}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Scoring Spectrum */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-8 border-t border-border">
-        <h2 className="text-lg font-medium text-text-primary mb-4">Cooperation-Conflict Spectrum</h2>
-        <div className="data-card p-4 space-y-3">
-          <p className="text-xs text-text-secondary leading-relaxed">
-            All scores range from -100 (strong conflict) to +100 (strong cooperation).
-            This bilateral spectrum derives from the CAMEO/Goldstein tradition of event
-            coding (Goldstein, JCR 1992) and extends it to article-level analysis via LLM classification.
-          </p>
-          <div className="flex items-center gap-3 py-2">
-            <span className="font-mono text-sm text-conflict font-bold">-100</span>
-            <div className="h-3 flex-1 rounded-full bg-gradient-to-r from-conflict via-neutral to-cooperation" />
-            <span className="font-mono text-sm text-cooperation font-bold">+100</span>
-          </div>
-          <div className="flex justify-between text-[10px] text-text-muted uppercase tracking-wider">
-            <span>Strong Conflict</span>
-            <span>Neutral</span>
-            <span>Strong Cooperation</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-6">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 text-xs text-text-muted">
-          Full bibliography: 30 papers. See docs/methodology.md for complete citations.
         </div>
       </footer>
+    </div>
+  );
+}
+
+function Section({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ marginBottom: 56 }}>
+      <div style={{
+        display: "flex", alignItems: "baseline", gap: 16,
+        paddingBottom: 8, borderBottom: "1px solid rgb(var(--rule-3))",
+        marginBottom: 20,
+      }}>
+        <span style={{
+          fontFamily: "var(--font-jetbrains-mono), monospace",
+          fontSize: 11, color: "rgb(var(--ink-4))",
+          letterSpacing: "0.1em",
+        }}>{number}</span>
+        <h2 style={{
+          fontFamily: "var(--font-playfair-display), Georgia, serif",
+          fontSize: 26, fontWeight: 700, letterSpacing: "-0.015em",
+          margin: 0, color: "rgb(var(--ink-1))",
+        }}>{title}</h2>
+      </div>
+      <div style={{ fontSize: 15, lineHeight: 1.7, color: "rgb(var(--ink-2))" }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Rule({ name, spec, describes }: { name: string; spec: string; describes: string }) {
+  return (
+    <div style={{
+      padding: 16,
+      background: "rgb(var(--paper-3))",
+      borderLeft: "3px solid rgb(var(--accent-1))",
+      marginBottom: 12,
+    }}>
+      <div style={{
+        fontFamily: "var(--font-playfair-display), Georgia, serif",
+        fontSize: 18, fontWeight: 700, color: "rgb(var(--ink-1))",
+        marginBottom: 6,
+      }}>{name}</div>
+      <div style={{
+        fontFamily: "var(--font-jetbrains-mono), monospace",
+        fontSize: 12, color: "rgb(var(--ink-2))", marginBottom: 8,
+      }}>{spec}</div>
+      <div style={{ fontSize: 14, color: "rgb(var(--ink-2))" }}>{describes}</div>
+    </div>
+  );
+}
+
+function CredFactor({ name, weight, rule }: { name: string; weight: string; rule: string }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "160px 60px 1fr", gap: 12, padding: "6px 0", borderBottom: "1px solid rgb(var(--rule-1))" }}>
+      <span style={{ fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: 12, fontWeight: 600, color: "rgb(var(--ink-1))" }}>{name}</span>
+      <span style={{ fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: 12, color: "rgb(var(--ink-3))" }}>w = {weight}</span>
+      <span style={{ color: "rgb(var(--ink-2))", fontSize: 13, lineHeight: 1.55 }}>{rule}</span>
     </div>
   );
 }
