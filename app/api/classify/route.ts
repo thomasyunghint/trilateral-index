@@ -22,7 +22,7 @@ import type {
 } from "@/lib/classifier/types";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = process.env.ANTHROPIC_CLASSIFY_MODEL || "claude-sonnet-4-5";
 const MAX_TOKENS = 1024;
 
 /**
