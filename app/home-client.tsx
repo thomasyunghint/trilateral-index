@@ -928,13 +928,28 @@ function SignalHero({ signal }: { signal: SignalRow }) {
       {/* LEDE — the brief reads first, before the data panels */}
       <section className="signal-hero-section signal-hero-lede">
         <div className="signal-interpretation">
-          {signal.interpretation.split(/(?=→ Watch:|Watch:)/).map((part, i) =>
-            part.startsWith("→") || part.startsWith("Watch:") ? (
-              <div key={i} className="watch-line">{part}</div>
-            ) : (
-              <p key={i} style={{ margin: 0 }}>{part}</p>
-            )
-          )}
+          {(() => {
+            // Promote any forward-looking "Watch …" sentence into a styled
+            // pull-quote with a salmon left border. Sonnet's output uses
+            // several forms — "Watch for …", "Watch as …", "Watch the …",
+            // "→ Watch:" — so we match the word "Watch" at any sentence
+            // boundary (start of string OR after a sentence-terminator).
+            const text = signal.interpretation || "";
+            const match = text.match(/(?:^|(?<=[.!?]\s))(→\s*)?Watch\s[^.!?]*[.!?]/);
+            if (!match || match.index === undefined) {
+              return <p style={{ margin: 0 }}>{text}</p>;
+            }
+            const before = text.slice(0, match.index).trim();
+            const watch = match[0].trim();
+            const after = text.slice(match.index + match[0].length).trim();
+            return (
+              <>
+                {before && <p style={{ margin: 0 }}>{before}</p>}
+                <div className="watch-line">{watch}</div>
+                {after && <p style={{ margin: 0 }}>{after}</p>}
+              </>
+            );
+          })()}
         </div>
       </section>
 
