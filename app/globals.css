@@ -194,6 +194,50 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgb(var(--ink-3));
+  gap: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .signal-hero-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 18px;
+  }
+  .signal-hero-headline {
+    padding: 20px 18px 18px !important;
+    font-size: clamp(22px, 6.5vw, 28px) !important;
+  }
+  .signal-hero-meta-grid {
+    padding: 18px !important;
+    gap: 16px !important;
+  }
+  .signal-hero-section {
+    padding: 18px !important;
+  }
+  .signal-hero-footer {
+    padding: 12px 18px !important;
+  }
+}
+@media (max-width: 480px) {
+  .tgfi-container { padding: 0 16px; }
+  .tgfi-masthead-title { font-size: 26px !important; line-height: 1.1; }
+  .tgfi-masthead-meta {
+    flex-direction: column;
+    gap: 4px !important;
+    font-size: 10px !important;
+  }
+  .signal-hero-meta-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .evidence-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .evidence-quote-text {
+    font-size: 14px !important;
+  }
+  .bucket-grid-title { font-size: 22px !important; }
+  .signal-interpretation { font-size: 14px !important; }
 }
 .signal-hero-number {
   font-family: var(--font-playfair-display), Georgia, serif;
@@ -865,8 +909,35 @@ details[open] > .signal-method-summary {
   gap: 12px;
 }
 @media (max-width: 760px) {
-  .bucket-grid-row { grid-template-columns: 1fr; gap: 8px; }
-  .bucket-grid-row-cards { grid-template-columns: 1fr; }
+  /* On narrow viewports, drop the label column and put the bucket name
+     above three small compact cards in a row. Keeps the whole matrix
+     scannable instead of becoming an 18-step vertical scroll. */
+  .bucket-grid-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .bucket-grid-row-head {
+    padding-top: 0;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .bucket-grid-row-name {
+    font-size: 12px;
+  }
+  .bucket-grid-row-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .bucket-card {
+    padding: 8px 10px;
+    gap: 2px;
+  }
+  .bucket-card-pair { font-size: 9px; }
+  .bucket-card-score { font-size: 18px; }
+  .bucket-card-count { font-size: 9px; }
+  .bucket-card-bar-wrap { height: 3px; margin: 2px 0; }
 }
 
 .bucket-card {
