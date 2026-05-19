@@ -1226,6 +1226,54 @@ details[open] > .signal-method-summary {
   color: rgb(var(--ink-1));
 }
 
+/* Empty state — no signals, or filter has no matches */
+.signal-empty-state {
+  margin: 56px 0 32px;
+  padding: 40px 24px;
+  background: rgb(var(--paper-2));
+  border: 1px solid rgb(var(--rule-1));
+  border-radius: var(--r-2);
+  text-align: center;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.signal-empty-headline {
+  font-family: var(--font-playfair-display), Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: rgb(var(--ink-1));
+  margin: 0 0 10px;
+}
+.signal-empty-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgb(var(--ink-2));
+  margin: 0 0 16px;
+}
+.signal-empty-clear {
+  display: inline-block;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid rgb(var(--accent-1));
+  color: rgb(var(--accent-1));
+  border-radius: var(--r-2);
+  font-family: var(--font-inter), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.signal-empty-clear:hover {
+  background: rgb(var(--accent-1));
+  color: rgb(var(--paper-1));
+}
+.signal-empty-clear:focus-visible {
+  outline: 2px solid rgb(var(--accent-1));
+  outline-offset: 2px;
+}
+
 /* Signal modal (compact-card expansion) */
 .signal-modal-overlay {
   position: fixed;

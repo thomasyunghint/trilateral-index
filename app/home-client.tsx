@@ -1311,12 +1311,31 @@ export function HomeClient({
       <Masthead stats={stats} />
 
       <div className="tgfi-container">
-        {top3.length === 0 && (
-          <div style={{ padding: "48px 0", color: "rgb(var(--ink-3))", fontSize: 14, textAlign: "center" }}>
-            No signals match the current filter. <button
+        {top3.length === 0 && filter && (
+          <div className="signal-empty-state">
+            <p className="signal-empty-headline">No signals match the current filter</p>
+            <p className="signal-empty-body">
+              The {filter.pair} &times; {filter.bucket} cell has no surfaced signals
+              right now. The detection engine may surface one in a future cycle
+              if the corpus density rises.
+            </p>
+            <button
+              type="button"
               onClick={() => setFilter(null)}
-              style={{ background: "none", border: "none", color: "rgb(var(--accent-1))", cursor: "pointer", textDecoration: "underline" }}
-            >Clear filter</button> to see all signals.
+              className="signal-empty-clear"
+            >
+              Clear filter and view all signals
+            </button>
+          </div>
+        )}
+        {top3.length === 0 && !filter && (
+          <div className="signal-empty-state">
+            <p className="signal-empty-headline">No active signals yet</p>
+            <p className="signal-empty-body">
+              The detection engine has not produced any signals above
+              threshold in the current cycle. New articles ingest every 30
+              minutes; detection runs every 12 hours.
+            </p>
           </div>
         )}
         {top3.map((s) => <SignalHero key={s.id} signal={s} />)}
