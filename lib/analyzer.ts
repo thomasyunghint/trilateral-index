@@ -54,6 +54,40 @@ export type AnalyzedSignal = Signal & {
   };
 };
 
+async function callOnce(
+  client: Anthropic,
+  signal: Signal,
+  evidenceText: string,
+  attempt: number,
+): Promise<{ title: string; analysis: string; confidence?: number; tags?: string[] } | null> {
+  // Reinforce JSON structure on retry — Sonnet occasionally prose-wraps the
+  // first response. The second attempt asks for valid JSON only.
+  const userBase = `DETECTED PATTERN: ${signal.pattern_type}\n\nSUMMARY: ${signal.summary}\n\nSUPPORTING EVIDENCE:\n${evidenceText}\n\nPAIRS: ${signal.pairs.join(", ")}\nSCORE: ${signal.score}/100`;
+  const userMsg = attempt === 0
+    ? `${userBase}\n\nWrite the analysis brief.`
+    : `${userBase}\n\nReturn ONLY a valid JSON object matching the schema. No prose, no markdown fences. JSON only.`;
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 500,
+      messages: [{ role: "user", content: userMsg }],
+      system: buildAnalysisPrompt(),
+    });
+    if (!response.content || response.content.length === 0) return null;
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (typeof parsed.title === "string" && typeof parsed.analysis === "string") {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
   const client = getClient();
   if (!client) return signal;
@@ -62,42 +96,25 @@ export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
     .map(c => `- [${c.source}] (${c.date ? String(c.date).slice(0, 10) : "unknown date"}): "${c.text}" [direction: ${c.direction}, bucket: ${c.bucket}]`)
     .join("\n");
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514", // TODO: migrate to newer model before June 15 EOL
-      max_tokens: 500,
-      messages: [
-        {
-          role: "user",
-          content: `DETECTED PATTERN: ${signal.pattern_type}\n\nSUMMARY: ${signal.summary}\n\nSUPPORTING EVIDENCE:\n${evidenceText}\n\nPAIRS: ${signal.pairs.join(", ")}\nSCORE: ${signal.score}/100\n\nWrite the analysis brief.`,
+  // Try once; if parse/validation fails retry with stricter JSON-only ask.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await callOnce(client, signal, evidenceText, attempt);
+    if (raw) {
+      return {
+        ...signal,
+        analysis: {
+          title: raw.title,
+          analysis: raw.analysis,
+          confidence: typeof raw.confidence === "number" ? raw.confidence : 5,
+          tags: Array.isArray(raw.tags) ? raw.tags : [],
         },
-      ],
-      system: buildAnalysisPrompt(),
-    });
-
-    if (!response.content || response.content.length === 0) {
-      console.error("Empty response from Anthropic API");
-      return signal;
+      };
     }
-
-    const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      try {
-        const analysis = JSON.parse(jsonMatch[0]);
-        // Validate required fields
-        if (typeof analysis.title === "string" && typeof analysis.analysis === "string") {
-          return { ...signal, analysis };
-        }
-      } catch {
-        console.error("Failed to parse analysis JSON from LLM response");
-      }
+    if (attempt === 0) {
+      console.error(`Sonnet analysis attempt 1 failed for signal "${signal.title.slice(0, 40)}", retrying…`);
     }
-  } catch (err) {
-    console.error(`Analysis failed for signal: ${(err as Error).message?.slice(0, 50)}`);
   }
-
+  console.error(`Sonnet analysis failed twice for signal "${signal.title.slice(0, 40)}", falling back to raw summary`);
   return signal;
 }
 
