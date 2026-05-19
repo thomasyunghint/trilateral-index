@@ -251,7 +251,9 @@ export default async function HomePage() {
     diverseCandidates.push(s);
   }
 
-  const rawSignals = diverseCandidates.slice(0, 10);
+  // 12 = 3 hero + 9 compact (three clean rows of three). 10 left an
+  // orphan compact card alone in the bottom row.
+  const rawSignals = diverseCandidates.slice(0, 12);
 
   // Batch-fetch article URLs+titles for all primary evidence claims across all signals
   const allClaimIds = rawSignals.flatMap((s) => (safeEvidence(s.evidence).claims || []).map((c) => c.id));

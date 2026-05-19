@@ -834,23 +834,30 @@ function MethodologyBlock({ signal }: { signal: SignalRow }) {
   }
 
   return (
-    <section className="signal-hero-section">
-      <div className="signal-hero-section-label">Methodology</div>
-      <div className="method-grid">
-        {rows.map(([k, v, pass]) => (
-          <div key={k} className="method-row">
-            <span className="method-key">{k}</span>
-            <span className="method-value">{v}</span>
-            <span className={pass === true ? "method-pass" : pass === false ? "method-fail" : ""}>
-              {pass === true ? "✓ PASS" : pass === false ? "✗ FAIL" : ""}
-            </span>
+    <section className="signal-hero-section signal-hero-method-section">
+      <details className="signal-method-details">
+        <summary className="signal-method-summary">
+          <span className="signal-hero-section-label">Methodology</span>
+          <span className="signal-method-summary-hint">
+            {rows.length} criteria · click to expand
+          </span>
+        </summary>
+        <div className="method-grid">
+          {rows.map(([k, v, pass]) => (
+            <div key={k} className="method-row">
+              <span className="method-key">{k}</span>
+              <span className="method-value">{v}</span>
+              <span className={pass === true ? "method-pass" : pass === false ? "method-fail" : ""}>
+                {pass === true ? "✓ PASS" : pass === false ? "✗ FAIL" : ""}
+              </span>
+            </div>
+          ))}
+          <div className="method-note">
+            Detection is rule-based and deterministic. Interpretation drafted by language model.
+            Refresh cadence: every 12 hours.
           </div>
-        ))}
-        <div className="method-note">
-          Detection is rule-based and deterministic. Interpretation drafted by language model.
-          Refresh cadence: every 12 hours.
         </div>
-      </div>
+      </details>
     </section>
   );
 }
@@ -917,17 +924,8 @@ function SignalHero({ signal }: { signal: SignalRow }) {
 
       <h2 className="signal-hero-headline">{signal.headline}</h2>
 
-      <div className="signal-hero-meta-grid">
-        <CredibilityPanel cred={signal.credibility} />
-        <FavorabilityPanel
-          fav={signal.favorability}
-          baselineSigma={signal.baselineSigma}
-          windowDays={signal.window_days}
-        />
-      </div>
-
-      <section className="signal-hero-section">
-        <div className="signal-hero-section-label">Interpretation</div>
+      {/* LEDE — the brief reads first, before the data panels */}
+      <section className="signal-hero-section signal-hero-lede">
         <div className="signal-interpretation">
           {signal.interpretation.split(/(?=→ Watch:|Watch:)/).map((part, i) =>
             part.startsWith("→") || part.startsWith("Watch:") ? (
@@ -939,10 +937,23 @@ function SignalHero({ signal }: { signal: SignalRow }) {
         </div>
       </section>
 
+      {/* EVIDENCE — verbatim quotes are the receipts */}
       <EvidenceBlock signal={signal} />
       {signal.dissenting && signal.dissenting.length > 0 && (
         <DissentingEvidence items={signal.dissenting} signal={signal} />
       )}
+
+      {/* PROOF PANELS — credibility + favorability beneath the story */}
+      <div className="signal-hero-meta-grid">
+        <CredibilityPanel cred={signal.credibility} />
+        <FavorabilityPanel
+          fav={signal.favorability}
+          baselineSigma={signal.baselineSigma}
+          windowDays={signal.window_days}
+        />
+      </div>
+
+      {/* CONTEXT — sparkline of source's history */}
       {signal.sparkline && signal.sparkline.length >= 2 && (
         <Sparkline
           data={signal.sparkline}
@@ -1015,13 +1026,18 @@ function SignalCompact({ signal, onExpand }: { signal: SignalRow; onExpand: () =
 
 function bucketCellColor(score: number | null): string {
   if (score === null) return "transparent";
-  const intensity = Math.min(1, Math.abs(score) / 80);
+  const abs = Math.abs(score);
+  // Below |30| → near-white. The card needs to be clearly directional
+  // before we paint the whole canvas a colour, otherwise a corpus that
+  // mostly trends mildly negative becomes a uniform pink wash.
+  if (abs < 30) return "rgb(var(--paper-2))";
+  const intensity = Math.min(1, (abs - 30) / 50);
   if (score > 0) {
-    return `rgba(26, 127, 55, ${0.1 + intensity * 0.4})`;
+    return `rgba(26, 127, 55, ${0.08 + intensity * 0.32})`;
   } else if (score < 0) {
-    return `rgba(207, 34, 46, ${0.1 + intensity * 0.4})`;
+    return `rgba(207, 34, 46, ${0.08 + intensity * 0.32})`;
   } else {
-    return "rgba(101, 109, 118, 0.08)";
+    return "rgba(101, 109, 118, 0.06)";
   }
 }
 
@@ -1222,7 +1238,12 @@ export function HomeClient({
   }, [signals, filter]);
 
   const top3 = filteredSignals.slice(0, 3);
-  const rest = filteredSignals.slice(3, 10);
+  // Trim compact grid to a multiple of 3 so the last row is never an orphan
+  // alone in a 3-column layout. With 10 total signals (3+7) the 7th compact
+  // card would sit by itself at the bottom; drop to 6 (3+6=9 = two clean
+  // rows of three).
+  const restCandidates = filteredSignals.slice(3, 12);
+  const rest = restCandidates.slice(0, Math.floor(restCandidates.length / 3) * 3);
 
   function handleCellClick(pair: string, bucket: string) {
     if (!pair && !bucket) {
