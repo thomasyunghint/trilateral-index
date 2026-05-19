@@ -230,7 +230,28 @@ export default async function HomePage() {
     })
     .map((x) => x.s);
 
-  const rawSignals = rankedCandidates.slice(0, 10);
+  // Editorial dedup pass: enforce diversity. Two signals that share
+  // (source, dominant bucket, claim-date) are almost certainly the same
+  // article surfaced under multiple bilateral pairs (e.g. one PIIE piece
+  // tagged US-EU AND CN-US trade renders as two near-identical hero cards).
+  // Collapse to the strongest representative.
+  const seenSourceBucketDate = new Set<string>();
+  const diverseCandidates: DbSignal[] = [];
+  for (const s of rankedCandidates) {
+    const ev = safeEvidence(s.evidence);
+    const c0 = ev.claims?.[0];
+    if (!c0) {
+      diverseCandidates.push(s);
+      continue;
+    }
+    const dateKey = c0.date ? String(c0.date).slice(0, 10) : "no-date";
+    const editorialKey = `${c0.source}::${c0.bucket}::${dateKey}::${s.pattern_type}`;
+    if (seenSourceBucketDate.has(editorialKey)) continue;
+    seenSourceBucketDate.add(editorialKey);
+    diverseCandidates.push(s);
+  }
+
+  const rawSignals = diverseCandidates.slice(0, 10);
 
   // Batch-fetch article URLs+titles for all primary evidence claims across all signals
   const allClaimIds = rawSignals.flatMap((s) => (safeEvidence(s.evidence).claims || []).map((c) => c.id));

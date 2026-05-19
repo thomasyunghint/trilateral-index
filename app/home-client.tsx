@@ -215,7 +215,7 @@ function CredibilityPanel({ cred }: { cred: Credibility }) {
     ["Source tier", cred.sourceTier, cred.tierLabel || "—"],
     ["Source diversity", cred.sourceDiversity, `${cred.sourceCount} source${cred.sourceCount !== 1 ? "s" : ""}`],
     ["Sample size", cred.sampleSize, `N=${cred.claimCount} claim${cred.claimCount !== 1 ? "s" : ""}`],
-    ["Detection margin", cred.detectionMargin, `${Math.round(cred.detectionMargin * 100)}%`],
+    ["Detection margin", cred.detectionMargin, cred.detectionMargin >= 1 ? "at ceiling" : `+${Math.round((cred.detectionMargin - 0.5) * 200)}% above threshold`],
     ["Reproducibility", cred.reproducibility, "rule-based"],
   ];
 
@@ -637,16 +637,15 @@ function Sparkline({
   const trendMax = Math.max(...allMeans);
   const totalClaims = daily.reduce((s, d) => s + d.count, 0);
 
-  // Compute actual span shown so the label reflects reality, not a hardcoded 90d.
   const spanDays = Math.max(1, Math.round((xMax - xMin) / 86400_000));
   return (
     <section className="signal-hero-section sparkline-section">
-      <div className="signal-hero-section-label">Source baseline · {spanDays} days</div>
+      <div className="signal-hero-section-label">Baseline context</div>
       <p className="sparkline-explainer">
-        Daily mean direction for this source on this pair across {fmtDay(xMin)}
-        &nbsp;–&nbsp;{fmtDay(xMax)}. Each dot is one day, sized by the number of
-        claims published; <strong>diamonds</strong> mark the dates of the flip
-        captured above.
+        Daily mean direction on this pair across {fmtDay(xMin)}&nbsp;&ndash;&nbsp;
+        {fmtDay(xMax)} ({spanDays}&nbsp;day window). Each dot is one day, sized by
+        the number of claims; <strong>diamonds</strong> mark the dates of the
+        flip captured above.
       </p>
 
       <div className="sparkline-container">
@@ -1099,10 +1098,11 @@ function BucketGrid({
     <div className="bucket-grid-wrap">
       <div className="tgfi-container">
         <div className="bucket-grid-head">
-          <h2 className="bucket-grid-title">The matrix</h2>
+          <h2 className="bucket-grid-title">By dimension</h2>
           <p className="bucket-grid-sub">
-            Claim-weighted direction for each bucket × bilateral pair over the
-            past 120 days. Click any card to filter signals to that cell.
+            Claim-weighted average direction for each bucket × bilateral pair
+            across the past 120 days. Cards reflect the corpus, not any single
+            signal. Click a card to filter signals to that cell.
           </p>
         </div>
 
