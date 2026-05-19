@@ -216,17 +216,36 @@ function CredibilityPanel({ cred }: { cred: Credibility }) {
     ["Reproducibility", cred.reproducibility, "rule-based"],
   ];
 
+  function scoreBand(v: number): "strong" | "ok" | "weak" | "poor" {
+    if (v >= 0.8) return "strong";
+    if (v >= 0.5) return "ok";
+    if (v >= 0.3) return "weak";
+    return "poor";
+  }
+
   return (
     <div className="cred-panel">
       <div className="signal-hero-section-label">Credibility</div>
-      {rows.map(([label, value, hint]) => (
-        <div key={label} className="cred-row">
-          <span className="cred-label">{label} <span style={{ color: "rgb(var(--ink-4))", marginLeft: 4 }}>({hint})</span></span>
-          <span className="cred-bar">
-            <span className="cred-bar-fill" style={{ width: `${clamp(value, 0, 1) * 100}%` }} />
-          </span>
-        </div>
-      ))}
+      {rows.map(([label, value, hint]) => {
+        const v = clamp(value, 0, 1);
+        return (
+          <div key={label} className="cred-row">
+            <span className="cred-label">
+              {label}{" "}
+              <span style={{ color: "rgb(var(--ink-4))", marginLeft: 4 }}>({hint})</span>
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <span className="cred-bar">
+                <span
+                  className="cred-bar-fill"
+                  data-score={scoreBand(v)}
+                  style={{ width: `${v * 100}%` }}
+                />
+              </span>
+            </span>
+          </div>
+        );
+      })}
       <div className="cred-composite">
         <span className="cred-stars">{stars}</span>
         {filled}/5 · {compositeLabel}
@@ -251,19 +270,40 @@ function FavorabilityPanel({
   const fromPct = ((fav.fromDirection + 100) / 200) * 100;
   const toPct = ((fav.toDirection + 100) / 200) * 100;
   const isFlip = fav.delta !== 0;
+  // Window label uses correct pluralisation
+  const windowLabel = typeof windowDays === "number"
+    ? ` over ${windowDays} day${windowDays === 1 ? "" : "s"}`
+    : "";
+  // Build a connector showing motion from fromPct → toPct
+  const connectorLeft = Math.min(fromPct, toPct);
+  const connectorWidth = Math.abs(toPct - fromPct);
+  const motionColor = fav.delta > 0 ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))";
 
   return (
     <div className="fav-panel">
       <div className="signal-hero-section-label">Favorability</div>
       <div className="fav-headline">
         {isFlip ? (
-          <>Δ direction {windowDays ? `over ${windowDays} days` : ""}: {fav.fromDirection > 0 ? "+" : ""}{fav.fromDirection} → {fav.toDirection > 0 ? "+" : ""}{fav.toDirection}</>
+          <>
+            Δ direction{windowLabel}: {fav.fromDirection > 0 ? "+" : ""}{fav.fromDirection} → {fav.toDirection > 0 ? "+" : ""}{fav.toDirection}
+          </>
         ) : (
           <>Current direction: {fav.toDirection > 0 ? "+" : ""}{fav.toDirection}</>
         )}
       </div>
       <div className="fav-bar-track" aria-label="direction from conflict to cooperation">
         <span className="fav-bar-zero" />
+        {/* Connector showing motion between from and to */}
+        {isFlip && (
+          <span
+            className="fav-bar-motion"
+            style={{
+              left: `${connectorLeft}%`,
+              width: `${connectorWidth}%`,
+              background: motionColor,
+            }}
+          />
+        )}
         {isFlip && (
           <span
             className="fav-bar-from"
@@ -284,7 +324,7 @@ function FavorabilityPanel({
       </div>
       {isFlip && (
         <div className="fav-shift">
-          Net shift: {fav.delta > 0 ? "+" : ""}{fav.delta} ± {fav.ci} points (95% CI)
+          Net shift: <strong>{fav.delta > 0 ? "+" : ""}{fav.delta} points</strong>{windowLabel}
         </div>
       )}
       {typeof baselineSigma === "number" && baselineSigma > 0 && (
@@ -462,49 +502,103 @@ function DissentingEvidence({ items, signal }: { items: EvidenceClaim[]; signal:
    Sparkline
    ───────────────────────────────────────────────────────────── */
 
-function Sparkline({ data, signalId }: { data: Array<{ date: string; direction: number }>; signalId: string }) {
+type SparklineHighlight = { date: string; direction: number; role: "flip" };
+
+type DayPoint = {
+  day: string;        // YYYY-MM-DD
+  ts: number;
+  mean: number;
+  count: number;
+  min: number;
+  max: number;
+};
+
+/**
+ * Aggregate raw per-claim data into one point per calendar day.
+ * Many articles publish multiple claims per day, which produced visually
+ * stacked dots in v1. Collapsing to daily averages makes the trend readable.
+ */
+function aggregateByDay(raw: Array<{ date: string; direction: number }>): DayPoint[] {
+  const map = new Map<string, { sum: number; n: number; min: number; max: number }>();
+  for (const r of raw) {
+    if (!r.date) continue;
+    const day = String(r.date).slice(0, 10);
+    const bucket = map.get(day);
+    if (!bucket) {
+      map.set(day, { sum: r.direction, n: 1, min: r.direction, max: r.direction });
+    } else {
+      bucket.sum += r.direction;
+      bucket.n += 1;
+      bucket.min = Math.min(bucket.min, r.direction);
+      bucket.max = Math.max(bucket.max, r.direction);
+    }
+  }
+  return Array.from(map.entries())
+    .map(([day, b]) => ({
+      day,
+      ts: new Date(day + "T12:00:00Z").getTime(),
+      mean: Math.round(b.sum / b.n),
+      count: b.n,
+      min: b.min,
+      max: b.max,
+    }))
+    .sort((a, b) => a.ts - b.ts);
+}
+
+function Sparkline({
+  data,
+  signalId,
+  highlightDates = [],
+}: {
+  data: Array<{ date: string; direction: number }>;
+  signalId: string;
+  highlightDates?: SparklineHighlight[];
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   if (!data || data.length < 2) return null;
-  // Wider canvas + space on left for Y-axis labels and bottom for X-axis labels
+  const daily = aggregateByDay(data);
+  if (daily.length < 2) return null;
+
   const W = 720;
-  const H = 200;
-  const PAD_L = 44;       // room for Y-axis labels
-  const PAD_R = 16;
-  const PAD_T = 12;
-  const PAD_B = 26;       // room for X-axis labels
+  const H = 220;
+  const PAD_L = 56;
+  const PAD_R = 20;
+  const PAD_T = 16;
+  const PAD_B = 32;
 
   const innerW = W - PAD_L - PAD_R;
   const innerH = H - PAD_T - PAD_B;
 
-  const xs = data.map((d) => new Date(d.date).getTime());
-  const xMin = Math.min(...xs);
-  const xMax = Math.max(...xs);
-  const xRange = Math.max(xMax - xMin, 1);
+  const ts = daily.map((d) => d.ts);
+  const xMin = Math.min(...ts);
+  const xMax = Math.max(...ts);
+  const xRange = Math.max(xMax - xMin, 86400_000);
   const yRange = 200;
 
   const toX = (x: number) => PAD_L + ((x - xMin) / xRange) * innerW;
   const toY = (y: number) => PAD_T + ((100 - y) / yRange) * innerH;
 
-  // Compute mid-segment color: if both ends same sign → that color; else split at zero crossing
+  // Build segments (color by sign, split at zero crossing) using daily means
   type Segment = { x1: number; y1: number; x2: number; y2: number; color: string };
   const segments: Segment[] = [];
-  for (let i = 0; i < data.length - 1; i++) {
-    const a = data[i];
-    const b = data[i + 1];
-    const aX = toX(new Date(a.date).getTime());
-    const aY = toY(a.direction);
-    const bX = toX(new Date(b.date).getTime());
-    const bY = toY(b.direction);
-    const aSign = a.direction >= 0;
-    const bSign = b.direction >= 0;
-
+  for (let i = 0; i < daily.length - 1; i++) {
+    const a = daily[i];
+    const b = daily[i + 1];
+    const aX = toX(a.ts);
+    const aY = toY(a.mean);
+    const bX = toX(b.ts);
+    const bY = toY(b.mean);
+    const aSign = a.mean >= 0;
+    const bSign = b.mean >= 0;
     if (aSign === bSign) {
-      // single-colored segment
-      const color = aSign ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))";
-      segments.push({ x1: aX, y1: aY, x2: bX, y2: bY, color });
+      segments.push({
+        x1: aX, y1: aY, x2: bX, y2: bY,
+        color: aSign ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))",
+      });
     } else {
-      // crosses zero — split at the zero crossing
-      const totalDir = a.direction - b.direction;
-      const fraction = totalDir === 0 ? 0.5 : a.direction / totalDir;
+      const totalDir = a.mean - b.mean;
+      const fraction = totalDir === 0 ? 0.5 : a.mean / totalDir;
       const crossX = aX + (bX - aX) * fraction;
       const crossY = toY(0);
       segments.push({
@@ -518,162 +612,186 @@ function Sparkline({ data, signalId }: { data: Array<{ date: string; direction: 
     }
   }
 
-  // Y-axis tick values (in direction-space)
   const yTicks = [100, 50, 0, -50, -100];
-
-  // X-axis labels: first, mid, last date
-  const fmt = (ts: number) =>
-    new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const midTs = xMin + xRange / 2;
+  const fmtDay = (timestamp: number) =>
+    new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const xLabels: Array<{ ts: number; anchor: "start" | "middle" | "end" }> = [
     { ts: xMin, anchor: "start" },
-    { ts: midTs, anchor: "middle" },
+    { ts: xMin + xRange / 2, anchor: "middle" },
     { ts: xMax, anchor: "end" },
   ];
 
-  // Find current min/max direction for annotation
-  const ymin = Math.min(...data.map(d => d.direction));
-  const ymax = Math.max(...data.map(d => d.direction));
+  // Map each highlight (flip point) to nearest day point for marking
+  const highlightedDays = new Set<string>();
+  for (const h of highlightDates) {
+    const day = String(h.date).slice(0, 10);
+    highlightedDays.add(day);
+  }
 
-  const gradId = `sparkline-fill-${signalId}`;
+  // Statistics for caption
+  const allMeans = daily.map((d) => d.mean);
+  const trendMin = Math.min(...allMeans);
+  const trendMax = Math.max(...allMeans);
+  const totalClaims = daily.reduce((s, d) => s + d.count, 0);
 
   return (
-    <section className="signal-hero-section">
-      <div className="signal-hero-section-label">Direction Over Time · 90 Days</div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="sparkline-svg"
-        preserveAspectRatio="xMidYMid meet"
-        style={{ height: 200 }}
-      >
-        <defs>
-          {/* Vertical gradient: green at top → light → red at bottom */}
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgb(var(--coop-1))" stopOpacity="0.08" />
-            <stop offset={`${(toY(0) - PAD_T) / innerH * 100}%`} stopColor="rgb(var(--paper-3))" stopOpacity="0" />
-            <stop offset="100%" stopColor="rgb(var(--conflict-1))" stopOpacity="0.08" />
-          </linearGradient>
-        </defs>
+    <section className="signal-hero-section sparkline-section">
+      <div className="signal-hero-section-label">Source baseline · 90 days</div>
+      <p className="sparkline-explainer">
+        Daily mean direction for this source on this pair. Each dot is one day,
+        sized by the number of claims published; <strong>diamonds</strong> mark
+        the dates of the flip captured above.
+      </p>
 
-        {/* Y-axis gridlines + labels */}
-        {yTicks.map((tick) => {
-          const y = toY(tick);
-          const isZero = tick === 0;
-          return (
-            <g key={tick}>
-              <line
-                x1={PAD_L}
-                y1={y}
-                x2={W - PAD_R}
-                y2={y}
-                stroke={isZero ? "rgb(var(--ink-3))" : "rgb(var(--rule-2))"}
-                strokeWidth={isZero ? 1 : 0.5}
-                strokeDasharray={isZero ? "0" : "2 3"}
-              />
-              <text
-                x={PAD_L - 8}
-                y={y + 3}
-                fontSize="10"
+      <div className="sparkline-container">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="sparkline-svg-v2"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Cooperation / conflict shading */}
+          <rect x={PAD_L} y={PAD_T} width={innerW} height={toY(0) - PAD_T}
+                fill="rgb(var(--coop-1))" opacity="0.04" />
+          <rect x={PAD_L} y={toY(0)} width={innerW} height={H - PAD_B - toY(0)}
+                fill="rgb(var(--conflict-1))" opacity="0.04" />
+
+          {/* Y-axis grid + labels */}
+          {yTicks.map((tick) => {
+            const y = toY(tick);
+            const isZero = tick === 0;
+            return (
+              <g key={tick}>
+                <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y}
+                      stroke={isZero ? "rgb(var(--ink-3))" : "rgb(var(--rule-2))"}
+                      strokeWidth={isZero ? 1 : 0.5}
+                      strokeDasharray={isZero ? "0" : "2 3"} />
+                <text x={PAD_L - 10} y={y + 4} fontSize="10"
+                      fontFamily="var(--font-jetbrains-mono), monospace"
+                      fill="rgb(var(--ink-3))" textAnchor="end">
+                  {tick > 0 ? `+${tick}` : tick}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Vertical Y-axis labels */}
+          <text x={14} y={PAD_T + 56} fontSize="9"
                 fontFamily="var(--font-jetbrains-mono), monospace"
-                fill="rgb(var(--ink-3))"
-                textAnchor="end"
-              >
-                {tick > 0 ? `+${tick}` : tick}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Cooperation / Conflict zone shading (subtle background) */}
-        <rect
-          x={PAD_L}
-          y={PAD_T}
-          width={innerW}
-          height={toY(0) - PAD_T}
-          fill="rgb(var(--coop-1))"
-          opacity="0.04"
-        />
-        <rect
-          x={PAD_L}
-          y={toY(0)}
-          width={innerW}
-          height={H - PAD_B - toY(0)}
-          fill="rgb(var(--conflict-1))"
-          opacity="0.04"
-        />
-
-        {/* Colored line segments */}
-        {segments.map((s, i) => (
-          <line
-            key={i}
-            x1={s.x1}
-            y1={s.y1}
-            x2={s.x2}
-            y2={s.y2}
-            stroke={s.color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
-
-        {/* Data points */}
-        {data.map((d, i) => (
-          <circle
-            key={i}
-            cx={toX(new Date(d.date).getTime())}
-            cy={toY(d.direction)}
-            r="3"
-            fill={d.direction >= 0 ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))"}
-            stroke="rgb(var(--paper-2))"
-            strokeWidth="1.5"
-          >
-            <title>{`${fmt(new Date(d.date).getTime())}: ${d.direction > 0 ? "+" : ""}${d.direction}`}</title>
-          </circle>
-        ))}
-
-        {/* Y-axis side labels: "Cooperation" / "Conflict" */}
-        <text
-          x={PAD_L - 32}
-          y={PAD_T + 12}
-          fontSize="9"
-          fontFamily="var(--font-jetbrains-mono), monospace"
-          fill="rgb(var(--coop-1))"
-          textAnchor="end"
-          transform={`rotate(-90 ${PAD_L - 32} ${PAD_T + 12})`}
-        >
-          COOPERATION
-        </text>
-        <text
-          x={PAD_L - 32}
-          y={H - PAD_B - 12}
-          fontSize="9"
-          fontFamily="var(--font-jetbrains-mono), monospace"
-          fill="rgb(var(--conflict-1))"
-          textAnchor="start"
-          transform={`rotate(-90 ${PAD_L - 32} ${H - PAD_B - 12})`}
-        >
-          CONFLICT
-        </text>
-
-        {/* X-axis labels */}
-        {xLabels.map((l, i) => (
-          <text
-            key={i}
-            x={toX(l.ts)}
-            y={H - 8}
-            fontSize="10"
-            fontFamily="var(--font-jetbrains-mono), monospace"
-            fill="rgb(var(--ink-3))"
-            textAnchor={l.anchor}
-          >
-            {fmt(l.ts)}
+                fill="rgb(var(--coop-1))" textAnchor="middle"
+                transform={`rotate(-90 14 ${PAD_T + 56})`}>
+            COOPERATION
           </text>
-        ))}
-      </svg>
-      <div className="sparkline-caption">
-        Each point = one claim · range {ymin > 0 ? "+" : ""}{ymin} to {ymax > 0 ? "+" : ""}{ymax}
+          <text x={14} y={H - PAD_B - 56} fontSize="9"
+                fontFamily="var(--font-jetbrains-mono), monospace"
+                fill="rgb(var(--conflict-1))" textAnchor="middle"
+                transform={`rotate(-90 14 ${H - PAD_B - 56})`}>
+            CONFLICT
+          </text>
+
+          {/* Trend line segments between daily means */}
+          {segments.map((s, i) => (
+            <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+                  stroke={s.color} strokeWidth="1.5"
+                  strokeLinecap="round" strokeLinejoin="round" opacity={0.6} />
+          ))}
+
+          {/* Data points (one per day) */}
+          {daily.map((d, i) => {
+            const isHighlight = highlightedDays.has(d.day);
+            const isHovered = hovered === i;
+            const cx = toX(d.ts);
+            const cy = toY(d.mean);
+            const baseR = Math.min(7, 3 + Math.log2(d.count + 1));
+            const r = (isHighlight ? baseR + 1 : baseR) * (isHovered ? 1.25 : 1);
+            const color = d.mean >= 0 ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))";
+            return (
+              <g key={d.day}>
+                {/* Wide invisible hover target */}
+                <circle cx={cx} cy={cy} r={14} fill="transparent"
+                        onMouseEnter={() => setHovered(i)}
+                        onMouseLeave={() => setHovered(null)}
+                        style={{ cursor: "pointer" }} />
+                {isHighlight ? (
+                  <rect
+                    x={cx - r}
+                    y={cy - r}
+                    width={r * 2}
+                    height={r * 2}
+                    transform={`rotate(45 ${cx} ${cy})`}
+                    fill={color}
+                    stroke="rgb(var(--paper-2))"
+                    strokeWidth="2"
+                    pointerEvents="none"
+                  />
+                ) : (
+                  <circle cx={cx} cy={cy} r={r} fill={color}
+                          stroke="rgb(var(--paper-2))" strokeWidth="1.5"
+                          pointerEvents="none" />
+                )}
+              </g>
+            );
+          })}
+
+          {/* X-axis labels */}
+          {xLabels.map((l, i) => (
+            <text key={i} x={toX(l.ts)} y={H - 10} fontSize="10"
+                  fontFamily="var(--font-jetbrains-mono), monospace"
+                  fill="rgb(var(--ink-3))" textAnchor={l.anchor}>
+              {fmtDay(l.ts)}
+            </text>
+          ))}
+        </svg>
+
+        {/* HTML tooltip overlay (rendered above SVG via absolute positioning) */}
+        {hovered !== null && daily[hovered] && (() => {
+          const d = daily[hovered];
+          const tipX = (toX(d.ts) / W) * 100;
+          const tipY = (toY(d.mean) / H) * 100;
+          const isHighlight = highlightedDays.has(d.day);
+          return (
+            <div
+              className="sparkline-tooltip"
+              style={{
+                left: `${tipX}%`,
+                top: `${tipY}%`,
+              }}
+            >
+              <div className="sparkline-tooltip-date">
+                {new Date(d.ts).toLocaleDateString("en-US", {
+                  weekday: "short", month: "short", day: "numeric", year: "numeric",
+                })}
+                {isHighlight && <span className="sparkline-tooltip-flag">FLIP POINT</span>}
+              </div>
+              <div className="sparkline-tooltip-row">
+                <span className="sparkline-tooltip-key">Mean direction</span>
+                <span className="sparkline-tooltip-val">
+                  {d.mean > 0 ? "+" : ""}{d.mean}
+                </span>
+              </div>
+              {d.count > 1 && (
+                <div className="sparkline-tooltip-row">
+                  <span className="sparkline-tooltip-key">Range</span>
+                  <span className="sparkline-tooltip-val">
+                    {d.min > 0 ? "+" : ""}{d.min} to {d.max > 0 ? "+" : ""}{d.max}
+                  </span>
+                </div>
+              )}
+              <div className="sparkline-tooltip-row">
+                <span className="sparkline-tooltip-key">Claims</span>
+                <span className="sparkline-tooltip-val">{d.count}</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
+
+      <div className="sparkline-caption">
+        {daily.length} day{daily.length !== 1 ? "s" : ""} with claims ·{" "}
+        {totalClaims} total claim{totalClaims !== 1 ? "s" : ""} ·{" "}
+        daily mean range {trendMin > 0 ? "+" : ""}{trendMin} to {trendMax > 0 ? "+" : ""}{trendMax} ·{" "}
+        diamonds = signal&rsquo;s flip dates
+      </div>
+      <span style={{ display: "none" }}>{signalId}</span>
     </section>
   );
 }
@@ -782,7 +900,13 @@ function SignalHero({ signal }: { signal: SignalRow }) {
         <DissentingEvidence items={signal.dissenting} signal={signal} />
       )}
       {signal.sparkline && signal.sparkline.length >= 2 && (
-        <Sparkline data={signal.sparkline} signalId={signal.id} />
+        <Sparkline
+          data={signal.sparkline}
+          signalId={signal.id}
+          highlightDates={signal.claims
+            .filter((c) => c.date)
+            .map((c) => ({ date: c.date as string, direction: c.direction, role: "flip" as const }))}
+        />
       )}
       <MethodologyBlock signal={signal} />
 
