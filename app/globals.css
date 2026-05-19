@@ -187,10 +187,10 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 28px;
+  padding: 18px 28px;
   border-bottom: 1px solid rgb(var(--rule-1));
   font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgb(var(--ink-3));
@@ -200,7 +200,8 @@ body {
   font-weight: 700;
   color: rgb(var(--accent-1));
   letter-spacing: -0.02em;
-  font-size: 16px;
+  font-size: 24px;
+  line-height: 1;
 }
 .signal-hero-tags {
   display: flex;
@@ -219,18 +220,18 @@ body {
 }
 
 .signal-hero-headline {
-  padding: 28px;
+  padding: 32px 28px 28px;
   font-family: var(--font-playfair-display), Georgia, serif;
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(26px, 2.8vw, 38px);
   font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
   color: rgb(var(--ink-1));
   margin: 0;
 }
 
 .signal-hero-section {
-  padding: 24px 28px;
+  padding: 18px 28px;
   border-top: 1px solid rgb(var(--rule-1));
 }
 .signal-hero-section-label {
@@ -410,6 +411,21 @@ body {
   border-radius: 2px;
 }
 
+/* Lede section — the brief reads first, no section label */
+.signal-hero-lede {
+  padding-top: 22px;
+  padding-bottom: 22px;
+  border-top: none;
+}
+.signal-hero-lede .signal-interpretation {
+  font-size: 18px;
+  line-height: 1.55;
+  color: rgb(var(--ink-1));
+}
+.signal-hero-lede .signal-interpretation p:first-of-type::first-line {
+  font-weight: 500;
+}
+
 /* Interpretation paragraph (Sonnet brief) */
 .signal-interpretation {
   font-family: var(--font-inter), sans-serif;
@@ -564,13 +580,13 @@ a.dissenting-item-clickable:focus-visible {
 }
 
 /* Sparkline v2 */
-.sparkline-section { padding-top: 24px; padding-bottom: 28px; }
+.sparkline-section { padding-top: 20px; padding-bottom: 16px; }
 .sparkline-explainer {
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.5;
   color: rgb(var(--ink-3));
-  max-width: 720px;
-  margin: 4px 0 14px 0;
+  max-width: 760px;
+  margin: 2px 0 10px 0;
 }
 .sparkline-explainer strong {
   color: rgb(var(--ink-1));
@@ -582,7 +598,7 @@ a.dissenting-item-clickable:focus-visible {
 }
 .sparkline-svg-v2 {
   width: 100%;
-  height: auto;
+  height: 150px;
   display: block;
 }
 .sparkline-svg { width: 100%; height: 80px; }
@@ -652,6 +668,48 @@ a.dissenting-item-clickable:focus-visible {
   color: rgb(var(--ink-4));
   letter-spacing: 0.04em;
   line-height: 1.6;
+}
+
+/* Collapsible methodology details */
+.signal-hero-method-section { padding-top: 4px; padding-bottom: 4px; }
+.signal-method-details { padding: 0; }
+.signal-method-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  user-select: none;
+}
+.signal-method-summary::-webkit-details-marker { display: none; }
+.signal-method-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: rgb(var(--ink-4));
+  font-size: 10px;
+  transform: translateY(-1px);
+  transition: transform 0.15s ease;
+}
+details[open] > .signal-method-summary::before {
+  transform: rotate(90deg) translateX(-1px);
+}
+.signal-method-summary-hint {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--ink-4));
+  font-weight: 400;
+}
+.signal-method-summary:hover .signal-method-summary-hint {
+  color: rgb(var(--accent-1));
+}
+details[open] > .signal-method-summary {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgb(var(--rule-1));
+  margin-bottom: 12px;
 }
 
 /* Methodology block */
@@ -781,10 +839,10 @@ a.dissenting-item-clickable:focus-visible {
 
 .bucket-grid-row {
   display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 24px;
-  align-items: start;
-  padding: 16px 0;
+  grid-template-columns: 120px 1fr;
+  gap: 20px;
+  align-items: center;
+  padding: 10px 0;
   border-top: 1px solid rgb(var(--rule-1));
 }
 .bucket-grid-row:first-of-type { border-top: none; }
@@ -813,12 +871,12 @@ a.dissenting-item-clickable:focus-visible {
 
 .bucket-card {
   border: 1px solid rgb(var(--rule-1));
-  padding: 14px 16px;
+  padding: 10px 14px 12px;
   cursor: pointer;
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   position: relative;
 }
 .bucket-card:hover {
@@ -994,12 +1052,20 @@ a.dissenting-item-clickable:focus-visible {
   padding: 32px 0 48px;
   border-top: 1px solid rgb(var(--rule-3));
   font-size: 12px;
-  color: rgb(var(--ink-4));
+  color: rgb(var(--ink-3));
   font-family: var(--font-jetbrains-mono), monospace;
   letter-spacing: 0.04em;
 }
-.tgfi-footer a { color: rgb(var(--ink-3)); text-decoration: none; }
-.tgfi-footer a:hover { color: rgb(var(--accent-1)); }
+.tgfi-footer a {
+  color: rgb(var(--ink-1));
+  text-decoration: none;
+  border-bottom: 1px solid rgb(var(--rule-2));
+  padding-bottom: 1px;
+}
+.tgfi-footer a:hover {
+  color: rgb(var(--accent-1));
+  border-bottom-color: rgb(var(--accent-1));
+}
 
 /* Section heading (e.g. "More signals" between hero and compact grid) */
 .tgfi-section-rule {

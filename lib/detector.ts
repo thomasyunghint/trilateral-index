@@ -131,8 +131,16 @@ function sameTopicArea(a: ClaimRow, b: ClaimRow): boolean {
   // 2. Keyword overlap
   const keywordSim = topicSimilarity(a, b);
 
-  // Need EITHER high bucket similarity OR keyword overlap
-  return cosineSim > 0.7 || keywordSim > 0.12;
+  // Decision rule was OR with very lenient thresholds — produced false-positive
+  // flips between claims that shared a few stop-words but were about entirely
+  // different topics (e.g. Trump foreign-policy ≠ China-Taiwan restraint).
+  // Tightened:
+  //   - keyword overlap must hit 0.20 (was 0.12)
+  //   - OR bucket cosine must be very high (>0.85, was 0.7)
+  //   - AND keyword overlap must still clear a 0.08 floor — being in the same
+  //     bucket alone is insufficient if the claims share zero substantive
+  //     vocabulary.
+  return (keywordSim > 0.2) || (cosineSim > 0.85 && keywordSim > 0.08);
 }
 
 /**
