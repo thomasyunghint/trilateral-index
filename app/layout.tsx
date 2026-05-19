@@ -21,11 +21,29 @@ const playfairDisplay = Playfair_Display({
   display: "swap",
 });
 
+const SITE_TITLE = "TGFI — Trilateral Geoeconomic Fragmentation Index";
+const SITE_DESCRIPTION =
+  "A rule-based detection engine surfacing direction reversals, expert disagreements, and cross-bucket divergences across China-US-EU economic and political analysis from leading think tanks.";
+
 export const metadata: Metadata = {
-  title: "TGFI — Trilateral Geoeconomic Fragmentation Index",
-  description:
-    "An insight engine surfacing patterns across China-US-EU economic and political claims, sourced from leading think tanks and policy institutes.",
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   robots: "noindex, nofollow",
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    siteName: "TGFI",
+    type: "website",
+    url: "https://trilateralindex.org",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  authors: [{ name: "Thomas Tse" }],
+  applicationName: "TGFI",
+  category: "research",
 };
 
 export default function RootLayout({
