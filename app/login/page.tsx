@@ -46,7 +46,7 @@ function LoginForm() {
         </div>
         <form onSubmit={handleSubmit} className="login-form">
           <label htmlFor="password" className="login-label">
-            Access password
+            Password
           </label>
           <input
             id="password"
@@ -56,7 +56,7 @@ function LoginForm() {
             autoFocus
             autoComplete="current-password"
             className="login-input"
-            placeholder=""
+            placeholder="Enter access password"
           />
           {error && <div className="login-error">{error}</div>}
           <button
@@ -64,11 +64,11 @@ function LoginForm() {
             disabled={submitting || !password}
             className="login-button"
           >
-            {submitting ? "Verifying…" : "Enter"}
+            {submitting ? "Verifying…" : "Continue"}
           </button>
         </form>
         <p className="login-note">
-          Private research preview · Access by invitation only
+          Private research preview &middot; By invitation only
         </p>
       </div>
       <style>{`

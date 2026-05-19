@@ -951,9 +951,12 @@ details[open] > .signal-method-summary {
   position: relative;
 }
 .bucket-card:hover {
-  border-color: rgb(var(--ink-3));
+  border-color: rgb(var(--accent-1));
   transform: translateY(-1px);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.bucket-card:hover .bucket-card-pair {
+  color: rgb(var(--accent-1));
 }
 .bucket-card:focus-visible {
   outline: 2px solid rgb(var(--accent-1));
