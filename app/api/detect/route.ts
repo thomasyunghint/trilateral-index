@@ -58,9 +58,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // Store top signals in DB (non-blocking — don't fail the response if this errors)
+    // Replace the live signal set: archive everything currently SIGNAL,
+    // then insert this cycle's top results. This prevents the table from
+    // accumulating duplicates of the same underlying flip event across
+    // many cron runs (the bug discovered in audit pass: 11 stored copies
+    // of one CF40 flip dominated the home page).
     try {
-      for (const signal of result.slice(0, 5)) {
+      await sql`UPDATE signals SET status = 'ARCHIVED' WHERE status = 'SIGNAL'`;
+      const toStore = result.slice(0, 10);
+      for (const signal of toStore) {
         await sql`
           INSERT INTO signals (pattern_type, claim_ids, score, title, summary, evidence, status)
           VALUES (

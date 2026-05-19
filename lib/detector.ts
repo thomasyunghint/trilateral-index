@@ -261,10 +261,14 @@ function detectTemporalFlip(claims: ClaimRow[]): Signal[] {
         if (Math.abs(delta) >= MIN_DELTA) {
           const score = Math.min(100, Math.abs(delta) * (1 + 1 / Math.sqrt(daysDiff + 1)));
 
+          const bucketI = getDominantBucket(sorted[i]);
           signals.push({
             pattern_type: "TEMPORAL_FLIP",
-            title: `${pair}: ${source} direction reversal`,
-            summary: `${source} shifted ${delta > 0 ? "toward cooperation" : "toward restriction"} on ${pair} (${sorted[i].direction > 0 ? "+" : ""}${sorted[i].direction} → ${sorted[j].direction > 0 ? "+" : ""}${sorted[j].direction}) within ${Math.round(daysDiff)} days.`,
+            // Include bucket so two flips from the same source on the same
+            // pair but different dimensions (e.g. ECFR on US-EU trade vs
+            // ECFR on US-EU leverage) don't render as identical headlines.
+            title: `${pair} ${bucketI}: ${source} direction reversal`,
+            summary: `${source} shifted ${delta > 0 ? "toward cooperation" : "toward restriction"} on ${pair} ${bucketI} (${sorted[i].direction > 0 ? "+" : ""}${sorted[i].direction} → ${sorted[j].direction > 0 ? "+" : ""}${sorted[j].direction}) within ${Math.round(daysDiff)} days.`,
             score: Math.round(score),
             claim_ids: [sorted[i].id, sorted[j].id],
             evidence: {
@@ -287,14 +291,49 @@ function detectTemporalFlip(claims: ClaimRow[]): Signal[] {
     }
   }
 
-  // Deduplicate: keep highest score per source+pair
-  const seen = new Map<string, Signal>();
+  // Deduplicate aggressively. A single pair of articles produces O(N×M)
+  // candidate claim-pair signals (cartesian product of claims), all with the
+  // same source/pair/bucket and slight Δ variations. We want ONE signal per
+  // physical flip event, keyed by the two article IDs (before + after).
+  const byArticlePair = new Map<string, Signal>();
   for (const signal of signals.sort((a, b) => b.score - a.score)) {
-    const key = `${signal.title}`;
-    if (!seen.has(key)) seen.set(key, signal);
+    const ev = signal.evidence.claims || [];
+    if (ev.length < 2) continue;
+    // The two evidence claims map to two article_ids in the original data.
+    // detectTemporalFlip's signal pushes claims in [before, after] order
+    // (we sorted by date asc when constructing each candidate above).
+    // Use the claim IDs themselves (which uniquely identify the rows that
+    // produced this signal) as a stable dedup key, but normalised so any
+    // permutation of the same article pair maps to the same key.
+    // Strategy: bucket all candidates by source + pair + dominant bucket
+    // + before/after article ids derived from the claim->article mapping
+    // we already captured upstream.
+    const ids = signal.claim_ids.slice().sort();
+    const key = `${signal.title}::${ids.join(",")}`;
+    if (!byArticlePair.has(key)) byArticlePair.set(key, signal);
   }
 
-  return Array.from(seen.values()).slice(0, 10);
+  // Second-pass dedup: collapse multiple flip candidates between THE SAME
+  // pair of articles into one. Two signals from the same source × pair ×
+  // bucket whose Δ-windows overlap meaningfully are almost certainly the
+  // same underlying event — keep the highest-|Δ| representative.
+  const byEvent = new Map<string, Signal>();
+  for (const signal of Array.from(byArticlePair.values()).sort((a, b) => b.score - a.score)) {
+    const firstClaim = signal.evidence.claims[0];
+    const lastClaim = signal.evidence.claims[signal.evidence.claims.length - 1];
+    void lastClaim;
+    const pair = signal.pairs[0] || "?";
+    const bucket = firstClaim?.bucket || "?";
+    const source = firstClaim?.source || "?";
+    // Editorial dedup: at most ONE temporal-flip signal per
+    // (source, pair, dominant bucket). The user shouldn't see
+    // "US-EU: ECFR direction reversal" five times even if those are
+    // technically five distinct flip events — keep the strongest.
+    const eventKey = `${source}::${pair}::${bucket}`;
+    if (!byEvent.has(eventKey)) byEvent.set(eventKey, signal);
+  }
+
+  return Array.from(byEvent.values()).slice(0, 10);
 }
 
 /**

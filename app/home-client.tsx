@@ -955,16 +955,22 @@ function SignalHero({ signal }: { signal: SignalRow }) {
       )}
       <MethodologyBlock signal={signal} />
 
-      <footer className="signal-hero-footer">
-        <div className="signal-tags">
-          {signal.tags.length > 0 ? (
-            signal.tags.map((t) => <span key={t} className="signal-tag">{t}</span>)
-          ) : (
-            <span className="signal-tag">{signal.pair}</span>
-          )}
-        </div>
-        <div className="signal-tag" style={{ color: "rgb(var(--ink-4))" }}>
-          Signal ID {signal.id.slice(0, 8)}
+      <footer className="signal-hero-footer" title={`Signal ID ${signal.id}`}>
+        {signal.tags.length > 0 ? (
+          <div className="signal-tags">
+            {signal.tags.map((t) => <span key={t} className="signal-tag">{t}</span>)}
+          </div>
+        ) : (
+          <div className="signal-tags signal-tags-empty" />
+        )}
+        <div className="signal-permalink">
+          <a
+            href={`#signal-${signal.rank}`}
+            style={{ color: "rgb(var(--ink-4))", textDecoration: "none" }}
+            title="Permalink to this signal"
+          >
+            #{signal.rank}
+          </a>
         </div>
       </footer>
     </article>
