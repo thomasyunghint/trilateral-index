@@ -13,6 +13,14 @@ const COOKIE_NAME = "tgfi_auth";
 // Pages that don't require login
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
+// Killed routes — redirect to the new home rather than 404
+const LEGACY_REDIRECTS: Record<string, string> = {
+  "/insights": "/",
+  "/archive": "/",
+  "/review": "/",
+  "/backtest": "/",
+};
+
 function isApiRoute(pathname: string): boolean {
   return pathname.startsWith("/api/");
 }
@@ -36,6 +44,12 @@ function verifyCookie(cookieValue: string | undefined): boolean {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Legacy URL redirects — old /insights, /archive, etc. now point to /
+  const legacy = LEGACY_REDIRECTS[pathname];
+  if (legacy) {
+    return NextResponse.redirect(new URL(legacy, request.url), 308);
+  }
 
   // Allow public paths through
   if (isPublicPath(pathname)) {
