@@ -6,7 +6,7 @@
  */
 import { getDb } from "@/lib/db";
 import { SOURCES } from "@/lib/sources";
-import { enrichSignal, type SignalContext } from "@/lib/signal-enrichment";
+import { enrichSignal, fetchClaimMetadata, type SignalContext } from "@/lib/signal-enrichment";
 import { HomeClient, type SignalRow, type HeatmapCell, type StatsBlock } from "./home-client";
 
 export const dynamic = "force-dynamic";
@@ -206,10 +206,19 @@ export default async function HomePage() {
     LIMIT 10
   `) as DbSignal[];
 
+  // Batch-fetch article URLs+titles for all primary evidence claims across all signals
+  const allClaimIds = rawSignals.flatMap((s) => (safeEvidence(s.evidence).claims || []).map((c) => c.id));
+  const claimMetadata = await fetchClaimMetadata(sql, allClaimIds);
+
   const signals: SignalRow[] = await Promise.all(
     rawSignals.map(async (s, idx) => {
       const ev = safeEvidence(s.evidence);
-      const claims = ev.claims || [];
+      const rawClaims = ev.claims || [];
+      // Attach paper_title + paper_url to each primary claim
+      const claims = rawClaims.map((c) => {
+        const meta = claimMetadata.get(c.id);
+        return meta ? { ...c, paper_title: meta.paper_title, paper_url: meta.paper_url } : c;
+      });
       const cred = computeCredibility(claims, s.pattern_type, s.score);
       const fav = computeFavorability(claims);
       const tags = ev.analysis?.tags || [];

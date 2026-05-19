@@ -209,6 +209,34 @@ async function fetchSparkline(
 }
 
 /**
+ * Look up paper title + URL for a batch of claim IDs.
+ * Returns a Map<claim_id, { paper_title, paper_url }>.
+ *
+ * Primary evidence claims come from signal.evidence JSONB which only stores
+ * the claim text, not the source article URL. We need the URL so users
+ * can click the quote to jump to the original article.
+ */
+export async function fetchClaimMetadata(
+  sql: NeonQueryFunction<false, false>,
+  claimIds: string[],
+): Promise<Map<string, { paper_title: string; paper_url: string }>> {
+  const result = new Map<string, { paper_title: string; paper_url: string }>();
+  if (claimIds.length === 0) return result;
+
+  const rows = (await sql`
+    SELECT c.id, a.title, a.url
+    FROM claims c
+    JOIN articles a ON c.article_id = a.id
+    WHERE c.id::text = ANY(${claimIds})
+  `) as Array<{ id: string; title: string; url: string }>;
+
+  for (const r of rows) {
+    result.set(r.id, { paper_title: r.title, paper_url: r.url });
+  }
+  return result;
+}
+
+/**
  * Run all 3 enrichment queries in parallel for one signal.
  */
 export async function enrichSignal(

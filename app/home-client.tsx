@@ -126,6 +126,47 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+/**
+ * Build a citation link to the original article using the Text Fragment URL
+ * standard (#:~:text=...), which causes Chromium/Safari to scroll to and
+ * highlight the matching passage when the page loads.
+ *
+ * Reference: https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment/Text_fragments
+ */
+function buildCitationLink(c: EvidenceClaim): string | undefined {
+  if (!c.paper_url) return undefined;
+
+  // Pull the most distinctive substring from the claim text (skip short stop-words).
+  // Use a contiguous middle chunk to maximise the chance of an exact match.
+  const text = (c.text || "").trim();
+  if (!text) return c.paper_url;
+
+  // Trim trailing punctuation, take up to ~120 chars from the middle for a
+  // recognisable but URL-friendly fragment.
+  const max = 120;
+  let snippet = text.replace(/[.!?]+$/, "");
+  if (snippet.length > max) {
+    // Take the middle slice — usually the most distinctive part of a claim.
+    const start = Math.max(0, Math.floor((snippet.length - max) / 2));
+    snippet = snippet.slice(start, start + max);
+    // Trim partial words at both ends
+    snippet = snippet.replace(/^\S*\s+/, "").replace(/\s+\S*$/, "");
+  }
+
+  // Strip characters that need heavy escaping or cause matching failures
+  // (curly quotes, smart dashes, line breaks). The browser is forgiving but
+  // ASCII quotes match more reliably.
+  snippet = snippet
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!snippet) return c.paper_url;
+
+  return `${c.paper_url}#:~:text=${encodeURIComponent(snippet)}`;
+}
+
 /* ─────────────────────────────────────────────────────────────
    Masthead
    ───────────────────────────────────────────────────────────── */
@@ -303,9 +344,15 @@ function EvidenceBlock({
   }
 
   function renderQuote(c: EvidenceClaim, label: string, cls: string) {
-    return (
-      <div className={`evidence-quote ${cls}`}>
-        <div className="evidence-quote-label">{label}</div>
+    const linkHref = buildCitationLink(c);
+    const isClickable = Boolean(linkHref);
+
+    const inner = (
+      <>
+        <div className="evidence-quote-label">
+          {label}
+          {isClickable && <span className="evidence-quote-jumpicon" aria-hidden="true">↗</span>}
+        </div>
         <p className="evidence-quote-text">&ldquo;{c.text}&rdquo;</p>
         <div className="evidence-quote-direction">
           Direction: {c.direction > 0 ? "+" : ""}{c.direction} ·{" "}
@@ -319,12 +366,27 @@ function EvidenceBlock({
             </>
           )}
           {c.date && <> · {formatDateShort(c.date)}</>}
-          {c.paper_url && (
-            <>{" · "}<a href={c.paper_url} target="_blank" rel="noopener noreferrer">view ↗</a></>
+          {isClickable && (
+            <>{" · "}<span style={{ color: "rgb(var(--accent-1))" }}>Click to view in source ↗</span></>
           )}
         </div>
-      </div>
+      </>
     );
+
+    if (isClickable) {
+      return (
+        <a
+          className={`evidence-quote evidence-quote-clickable ${cls}`}
+          href={linkHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open original article and jump to this quote"
+        >
+          {inner}
+        </a>
+      );
+    }
+    return <div className={`evidence-quote ${cls}`}>{inner}</div>;
   }
 
   return (
@@ -356,14 +418,37 @@ function DissentingEvidence({ items, signal }: { items: EvidenceClaim[]; signal:
     <section className="signal-hero-section">
       <div className="signal-hero-section-label">Dissenting Evidence</div>
       <div className="dissenting-list">
-        {items.map((c) => (
-          <div key={c.id} className="dissenting-item">
-            <div className="dissenting-source">
-              {c.source} · {formatDateShort(c.date)} · direction {c.direction > 0 ? "+" : ""}{c.direction}
+        {items.map((c) => {
+          const link = buildCitationLink(c);
+          const body = (
+            <>
+              <div className="dissenting-source">
+                {c.source} · {formatDateShort(c.date)} · direction {c.direction > 0 ? "+" : ""}{c.direction}
+                {link && <span style={{ marginLeft: 8, color: "rgb(var(--accent-1))" }}>↗</span>}
+              </div>
+              &ldquo;{c.text}&rdquo;
+            </>
+          );
+          if (link) {
+            return (
+              <a
+                key={c.id}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="dissenting-item dissenting-item-clickable"
+                title="Open original article and jump to this quote"
+              >
+                {body}
+              </a>
+            );
+          }
+          return (
+            <div key={c.id} className="dissenting-item">
+              {body}
             </div>
-            &ldquo;{c.text}&rdquo;
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="dissenting-summary">
         Counter-signals from same window did not mirror the {directionLabel} shift.
@@ -377,47 +462,217 @@ function DissentingEvidence({ items, signal }: { items: EvidenceClaim[]; signal:
    Sparkline
    ───────────────────────────────────────────────────────────── */
 
-function Sparkline({ data }: { data: Array<{ date: string; direction: number }> }) {
+function Sparkline({ data, signalId }: { data: Array<{ date: string; direction: number }>; signalId: string }) {
   if (!data || data.length < 2) return null;
-  const W = 600;
-  const H = 80;
-  const PAD = 10;
+  // Wider canvas + space on left for Y-axis labels and bottom for X-axis labels
+  const W = 720;
+  const H = 200;
+  const PAD_L = 44;       // room for Y-axis labels
+  const PAD_R = 16;
+  const PAD_T = 12;
+  const PAD_B = 26;       // room for X-axis labels
+
+  const innerW = W - PAD_L - PAD_R;
+  const innerH = H - PAD_T - PAD_B;
 
   const xs = data.map((d) => new Date(d.date).getTime());
   const xMin = Math.min(...xs);
   const xMax = Math.max(...xs);
   const xRange = Math.max(xMax - xMin, 1);
-  const yRange = 200; // -100 to +100
+  const yRange = 200;
 
-  const toX = (x: number) => PAD + ((x - xMin) / xRange) * (W - PAD * 2);
-  const toY = (y: number) => PAD + ((100 - y) / yRange) * (H - PAD * 2);
+  const toX = (x: number) => PAD_L + ((x - xMin) / xRange) * innerW;
+  const toY = (y: number) => PAD_T + ((100 - y) / yRange) * innerH;
 
-  const path = data.map((d, i) => {
-    const x = toX(new Date(d.date).getTime());
-    const y = toY(d.direction);
-    return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
+  // Compute mid-segment color: if both ends same sign → that color; else split at zero crossing
+  type Segment = { x1: number; y1: number; x2: number; y2: number; color: string };
+  const segments: Segment[] = [];
+  for (let i = 0; i < data.length - 1; i++) {
+    const a = data[i];
+    const b = data[i + 1];
+    const aX = toX(new Date(a.date).getTime());
+    const aY = toY(a.direction);
+    const bX = toX(new Date(b.date).getTime());
+    const bY = toY(b.direction);
+    const aSign = a.direction >= 0;
+    const bSign = b.direction >= 0;
 
-  const zeroY = toY(0);
+    if (aSign === bSign) {
+      // single-colored segment
+      const color = aSign ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))";
+      segments.push({ x1: aX, y1: aY, x2: bX, y2: bY, color });
+    } else {
+      // crosses zero — split at the zero crossing
+      const totalDir = a.direction - b.direction;
+      const fraction = totalDir === 0 ? 0.5 : a.direction / totalDir;
+      const crossX = aX + (bX - aX) * fraction;
+      const crossY = toY(0);
+      segments.push({
+        x1: aX, y1: aY, x2: crossX, y2: crossY,
+        color: aSign ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))",
+      });
+      segments.push({
+        x1: crossX, y1: crossY, x2: bX, y2: bY,
+        color: bSign ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))",
+      });
+    }
+  }
+
+  // Y-axis tick values (in direction-space)
+  const yTicks = [100, 50, 0, -50, -100];
+
+  // X-axis labels: first, mid, last date
+  const fmt = (ts: number) =>
+    new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const midTs = xMin + xRange / 2;
+  const xLabels: Array<{ ts: number; anchor: "start" | "middle" | "end" }> = [
+    { ts: xMin, anchor: "start" },
+    { ts: midTs, anchor: "middle" },
+    { ts: xMax, anchor: "end" },
+  ];
+
+  // Find current min/max direction for annotation
+  const ymin = Math.min(...data.map(d => d.direction));
+  const ymax = Math.max(...data.map(d => d.direction));
+
+  const gradId = `sparkline-fill-${signalId}`;
 
   return (
     <section className="signal-hero-section">
       <div className="signal-hero-section-label">Direction Over Time · 90 Days</div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="sparkline-svg" preserveAspectRatio="none">
-        <line x1={PAD} y1={zeroY} x2={W - PAD} y2={zeroY} stroke="rgb(var(--rule-2))" strokeWidth="1" strokeDasharray="2 3" />
-        <path d={path} stroke="rgb(var(--ink-1))" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="sparkline-svg"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ height: 200 }}
+      >
+        <defs>
+          {/* Vertical gradient: green at top → light → red at bottom */}
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgb(var(--coop-1))" stopOpacity="0.08" />
+            <stop offset={`${(toY(0) - PAD_T) / innerH * 100}%`} stopColor="rgb(var(--paper-3))" stopOpacity="0" />
+            <stop offset="100%" stopColor="rgb(var(--conflict-1))" stopOpacity="0.08" />
+          </linearGradient>
+        </defs>
+
+        {/* Y-axis gridlines + labels */}
+        {yTicks.map((tick) => {
+          const y = toY(tick);
+          const isZero = tick === 0;
+          return (
+            <g key={tick}>
+              <line
+                x1={PAD_L}
+                y1={y}
+                x2={W - PAD_R}
+                y2={y}
+                stroke={isZero ? "rgb(var(--ink-3))" : "rgb(var(--rule-2))"}
+                strokeWidth={isZero ? 1 : 0.5}
+                strokeDasharray={isZero ? "0" : "2 3"}
+              />
+              <text
+                x={PAD_L - 8}
+                y={y + 3}
+                fontSize="10"
+                fontFamily="var(--font-jetbrains-mono), monospace"
+                fill="rgb(var(--ink-3))"
+                textAnchor="end"
+              >
+                {tick > 0 ? `+${tick}` : tick}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Cooperation / Conflict zone shading (subtle background) */}
+        <rect
+          x={PAD_L}
+          y={PAD_T}
+          width={innerW}
+          height={toY(0) - PAD_T}
+          fill="rgb(var(--coop-1))"
+          opacity="0.04"
+        />
+        <rect
+          x={PAD_L}
+          y={toY(0)}
+          width={innerW}
+          height={H - PAD_B - toY(0)}
+          fill="rgb(var(--conflict-1))"
+          opacity="0.04"
+        />
+
+        {/* Colored line segments */}
+        {segments.map((s, i) => (
+          <line
+            key={i}
+            x1={s.x1}
+            y1={s.y1}
+            x2={s.x2}
+            y2={s.y2}
+            stroke={s.color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+
+        {/* Data points */}
         {data.map((d, i) => (
           <circle
             key={i}
             cx={toX(new Date(d.date).getTime())}
             cy={toY(d.direction)}
-            r="2"
-            fill="rgb(var(--ink-1))"
-          />
+            r="3"
+            fill={d.direction >= 0 ? "rgb(var(--coop-1))" : "rgb(var(--conflict-1))"}
+            stroke="rgb(var(--paper-2))"
+            strokeWidth="1.5"
+          >
+            <title>{`${fmt(new Date(d.date).getTime())}: ${d.direction > 0 ? "+" : ""}${d.direction}`}</title>
+          </circle>
+        ))}
+
+        {/* Y-axis side labels: "Cooperation" / "Conflict" */}
+        <text
+          x={PAD_L - 32}
+          y={PAD_T + 12}
+          fontSize="9"
+          fontFamily="var(--font-jetbrains-mono), monospace"
+          fill="rgb(var(--coop-1))"
+          textAnchor="end"
+          transform={`rotate(-90 ${PAD_L - 32} ${PAD_T + 12})`}
+        >
+          COOPERATION
+        </text>
+        <text
+          x={PAD_L - 32}
+          y={H - PAD_B - 12}
+          fontSize="9"
+          fontFamily="var(--font-jetbrains-mono), monospace"
+          fill="rgb(var(--conflict-1))"
+          textAnchor="start"
+          transform={`rotate(-90 ${PAD_L - 32} ${H - PAD_B - 12})`}
+        >
+          CONFLICT
+        </text>
+
+        {/* X-axis labels */}
+        {xLabels.map((l, i) => (
+          <text
+            key={i}
+            x={toX(l.ts)}
+            y={H - 8}
+            fontSize="10"
+            fontFamily="var(--font-jetbrains-mono), monospace"
+            fill="rgb(var(--ink-3))"
+            textAnchor={l.anchor}
+          >
+            {fmt(l.ts)}
+          </text>
         ))}
       </svg>
       <div className="sparkline-caption">
-        Each point = one claim&rsquo;s direction · &minus;100 conflict / +100 cooperation
+        Each point = one claim · range {ymin > 0 ? "+" : ""}{ymin} to {ymax > 0 ? "+" : ""}{ymax}
       </div>
     </section>
   );
@@ -527,7 +782,7 @@ function SignalHero({ signal }: { signal: SignalRow }) {
         <DissentingEvidence items={signal.dissenting} signal={signal} />
       )}
       {signal.sparkline && signal.sparkline.length >= 2 && (
-        <Sparkline data={signal.sparkline} />
+        <Sparkline data={signal.sparkline} signalId={signal.id} />
       )}
       <MethodologyBlock signal={signal} />
 
