@@ -129,7 +129,10 @@ function computeFavorability(claims: EvidenceClaim[]) {
   return { fromDirection, toDirection, delta, ci };
 }
 
-async function buildHeatmap(sql: ReturnType<typeof getDb>): Promise<HeatmapCell[]> {
+async function buildHeatmap(
+  sql: ReturnType<typeof getDb>,
+  signalCounts: Map<string, number> = new Map(),
+): Promise<HeatmapCell[]> {
   const buckets = ["trade", "investment", "technology", "finance", "leverage", "policy"];
   const pairs = ["CN-US", "CN-EU", "US-EU"];
 
@@ -189,6 +192,7 @@ async function buildHeatmap(sql: ReturnType<typeof getDb>): Promise<HeatmapCell[
         bucket,
         score: data && data.n > 0 ? Math.round(data.sum / data.n) : null,
         count: data?.n || 0,
+        signalCount: signalCounts.get(key) || 0,
       });
     }
   }
@@ -345,7 +349,16 @@ export default async function HomePage() {
     lastIngest: lastIngest?.run_at ? new Date(lastIngest.run_at).toISOString() : null,
   };
 
-  const heatmap = await buildHeatmap(sql);
+  // Tally how many surfaced signals match each (pair, bucket) cell so the
+  // bucket card can show a "N signals" badge — readers see at a glance
+  // which cells have drill-down content vs which are corpus-only.
+  const signalCountByCell = new Map<string, number>();
+  for (const s of signals) {
+    if (!s.pair || !s.bucket) continue;
+    const key = `${s.pair}::${s.bucket}`;
+    signalCountByCell.set(key, (signalCountByCell.get(key) || 0) + 1);
+  }
+  const heatmap = await buildHeatmap(sql, signalCountByCell);
 
   return <HomeClient signals={signals} heatmap={heatmap} stats={stats} />;
 }

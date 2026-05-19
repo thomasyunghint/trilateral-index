@@ -972,6 +972,25 @@ details[open] > .signal-method-summary {
   font-weight: 600;
   letter-spacing: 0.06em;
   color: rgb(var(--ink-2));
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.bucket-card-signal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgb(var(--accent-1));
+  color: rgb(var(--paper-1));
+  border-radius: 8px;
 }
 .bucket-card-score {
   font-family: var(--font-jetbrains-mono), monospace;

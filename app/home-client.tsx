@@ -64,7 +64,8 @@ export type HeatmapCell = {
   pair: string;
   bucket: string;
   score: number | null;
-  count: number;
+  count: number;            // total claims in this pair × bucket cell
+  signalCount?: number;     // how many surfaced signals match this cell
 };
 
 export type StatsBlock = {
@@ -1076,7 +1077,14 @@ function BucketCard({
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
     >
-      <div className="bucket-card-pair">{cell.pair}</div>
+      <div className="bucket-card-pair">
+        {cell.pair}
+        {typeof cell.signalCount === "number" && cell.signalCount > 0 && (
+          <span className="bucket-card-signal-badge" title={`${cell.signalCount} signal${cell.signalCount === 1 ? "" : "s"} surfaced for this cell — click to filter`}>
+            {cell.signalCount}
+          </span>
+        )}
+      </div>
       <div className="bucket-card-score" style={{ color: cellTextColor(score) }}>
         {score === null ? "—" : (score > 0 ? "+" : "") + score}
       </div>
