@@ -1388,3 +1388,19 @@ details[open] > .signal-method-summary {
 .source-feed-article-title { color: rgb(var(--ink-1)); }
 .source-feed-article-title a { color: inherit; text-decoration: none; }
 .source-feed-article-title a:hover { color: rgb(var(--accent-1)); }
+
+@media (max-width: 600px) {
+  /* On narrow viewports each Sources card was 530px tall (8 article rows
+     plus 4-up stats). Hide the tail-end article rows so each card sits
+     closer to a single viewport. Desktop still shows all 8. */
+  .source-feed-article:nth-of-type(n + 6) { display: none; }
+  .source-feed-card {
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  /* Stats grid 4-up → 2-up to avoid cramped 75px-wide columns. */
+  .source-feed-card > div[style*="repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+}
