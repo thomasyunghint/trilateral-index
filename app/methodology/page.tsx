@@ -283,10 +283,10 @@ function Rule({ name, spec, describes }: { name: string; spec: string; describes
 
 function CredFactor({ name, weight, rule }: { name: string; weight: string; rule: string }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "160px 60px 1fr", gap: 12, padding: "6px 0", borderBottom: "1px solid rgb(var(--rule-1))" }}>
-      <span style={{ fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: 12, fontWeight: 600, color: "rgb(var(--ink-1))" }}>{name}</span>
-      <span style={{ fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: 12, color: "rgb(var(--ink-3))" }}>w = {weight}</span>
-      <span style={{ color: "rgb(var(--ink-2))", fontSize: 13, lineHeight: 1.55 }}>{rule}</span>
+    <div className="cred-factor">
+      <span className="cred-factor-name">{name}</span>
+      <span className="cred-factor-weight">w = {weight}</span>
+      <span className="cred-factor-rule">{rule}</span>
     </div>
   );
 }
