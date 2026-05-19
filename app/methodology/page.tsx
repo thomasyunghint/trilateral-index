@@ -76,12 +76,12 @@ export default function MethodologyPage() {
         <Section number="02" title="Detection rules">
           <Rule
             name="Temporal Flip"
-            spec="|Δ direction| ≥ 60 within 45 days, same source × same pair, different articles, Jaccard topic similarity ≥ 0.12"
+            spec="|Δ direction| ≥ 60 within 45 days, same source × same pair, different articles, topic similarity passes (keyword Jaccard ≥ 0.20, OR bucket cosine ≥ 0.85 with keyword floor 0.08)"
             describes="A source materially changes its position on a bilateral relationship within a short window."
           />
           <Rule
             name="Source Disagreement"
-            spec="Direction gap ≥ 40 points across two distinct sources, same pair × same dominant bucket, topic similarity ≥ 0.12"
+            spec="Direction gap ≥ 40 points across two distinct sources, same pair × same dominant bucket, topic similarity satisfies the same dual threshold as above"
             describes="Two credible analysts reach opposite conclusions on the same trajectory."
           />
           <Rule
@@ -89,6 +89,13 @@ export default function MethodologyPage() {
             spec="Bucket-pair direction gap ≥ 50 points within the same bilateral pair, at least 2 claims per bucket"
             describes="Cooperation in one dimension (e.g. Trade) while restriction in another (e.g. Technology) for the same country pair."
           />
+          <p style={{ fontSize: 13, color: "rgb(var(--ink-3))", marginTop: 16 }}>
+            Post-detection editorial dedup collapses multiple flip candidates
+            between the same source × pair × dominant bucket into a single
+            representative signal (highest absolute Δ wins). Topic-similarity
+            thresholds were tightened in May 2026 after observing false-positive
+            flips between superficially related claims.
+          </p>
           <p style={{ fontSize: 13, color: "rgb(var(--ink-3))", marginTop: 16 }}>
             Source code:{" "}
             <a href="https://github.com/thomasyunghint/trilateral-index/blob/main/lib/detector.ts"
