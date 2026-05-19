@@ -18,12 +18,18 @@ async function main() {
 
   console.log(`=== BATCH EXTRACTION (${batchSize} articles) ===\n`);
 
+  // Atomically claim articles (prevents race with concurrent cron + scripts)
   const pending = await sql`
-    SELECT id, source_name, title, full_text, word_count
-    FROM articles
-    WHERE status = 'pending' AND full_text IS NOT NULL AND word_count > 30
-    ORDER BY published_at DESC NULLS LAST
-    LIMIT ${batchSize}
+    UPDATE articles
+    SET status = 'processing'
+    WHERE id IN (
+      SELECT id FROM articles
+      WHERE status = 'pending' AND full_text IS NOT NULL AND word_count > 30
+      ORDER BY published_at DESC NULLS LAST
+      LIMIT ${batchSize}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id, source_name, title, full_text, word_count
   `;
 
   console.log(`Found ${pending.length} pending articles with content.\n`);

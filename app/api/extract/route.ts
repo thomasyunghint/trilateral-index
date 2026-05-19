@@ -5,7 +5,9 @@ import { verifyCronAuth } from "@/lib/auth";
 
 export const maxDuration = 300;
 
-const BATCH_SIZE = 5;
+// 10 articles per 30min cron = 480/day max throughput
+// Cost: ~$0.003/article * 10 = $0.03/run * 48 runs/day = $1.44/day = ~$43/month
+const BATCH_SIZE = 10;
 const MAX_CLAIMS_PER_ARTICLE = 30;
 
 export async function GET(request: Request) {
@@ -14,14 +16,31 @@ export async function GET(request: Request) {
 
   const sql = getDb();
 
+  // Recovery: roll back any articles stuck in 'processing' for >10 minutes
+  // (worker crashed before completing). Uses fetched_at as the change timestamp.
+  await sql`
+    UPDATE articles
+    SET status = 'pending'
+    WHERE status = 'processing'
+      AND fetched_at < NOW() - INTERVAL '10 minutes'
+  `;
+
+  // Atomically claim articles by transitioning pending → processing
+  // FOR UPDATE SKIP LOCKED prevents two concurrent workers from picking the same row
+  // (handles cron + manual batch scripts running in parallel)
   const pending = await sql`
-    SELECT id, source_name, title, full_text, word_count
-    FROM articles
-    WHERE status = 'pending'
-      AND full_text IS NOT NULL
-      AND word_count > 50
-    ORDER BY fetched_at ASC
-    LIMIT ${BATCH_SIZE}
+    UPDATE articles
+    SET status = 'processing'
+    WHERE id IN (
+      SELECT id FROM articles
+      WHERE status = 'pending'
+        AND full_text IS NOT NULL
+        AND word_count > 50
+      ORDER BY fetched_at ASC
+      LIMIT ${BATCH_SIZE}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id, source_name, title, full_text, word_count
   `;
 
   if (pending.length === 0) {

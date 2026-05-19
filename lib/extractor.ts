@@ -1,5 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+// Memoize client to avoid recreating per call (connection pool reuse)
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+  if (!_client) _client = new Anthropic({ apiKey });
+  return _client;
+}
+
 const EXTRACTION_PROMPT = `You are a precise claim extractor for a geopolitical economics monitoring system focused on China-US-EU trilateral relations.
 
 Given an article, extract ALL substantive claims. For each claim, provide structured metadata.
@@ -77,10 +86,7 @@ export async function extractClaims(
   title: string,
   source: string,
 ): Promise<ExtractionResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-
-  const client = new Anthropic({ apiKey });
+  const client = getClient();
 
   const truncated =
     articleText.length > 12000

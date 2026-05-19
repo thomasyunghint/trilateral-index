@@ -714,7 +714,7 @@ function HitRateCard({ result }: { result: HitRateResult }) {
       </div>
 
       {/* Hit rate bar */}
-      <div className="relative h-6 bg-bg-base rounded overflow-hidden mb-2">
+      <div className="relative h-6 bg-bg-surface rounded overflow-hidden mb-2">
         <div
           className={`absolute left-0 top-0 bottom-0 rounded transition-all ${
             isGood ? "bg-cooperation/30" : isOk ? "bg-amber-400/30" : "bg-conflict/30"

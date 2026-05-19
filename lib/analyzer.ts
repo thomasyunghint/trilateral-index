@@ -6,6 +6,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Signal } from "./detector";
 
+// Memoize client to avoid recreating per call (and reuse HTTP connection pool)
+let _client: Anthropic | null = null;
+function getClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  if (!_client) _client = new Anthropic({ apiKey });
+  return _client;
+}
+
 const ANALYSIS_PROMPT = `You are a senior geopolitical economics analyst writing for institutional investors.
 Given a detected PATTERN in trilateral (China-US-EU) relations, write a concise analysis brief.
 
@@ -35,10 +44,8 @@ export type AnalyzedSignal = Signal & {
 };
 
 export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return signal;
-
-  const client = new Anthropic({ apiKey });
+  const client = getClient();
+  if (!client) return signal;
 
   const evidenceText = signal.evidence.claims
     .map(c => `- [${c.source}] (${c.date ? String(c.date).slice(0, 10) : "unknown date"}): "${c.text}" [direction: ${c.direction}, bucket: ${c.bucket}]`)

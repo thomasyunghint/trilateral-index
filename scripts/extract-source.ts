@@ -20,15 +20,21 @@ async function main() {
   console.log(`=== TARGETED EXTRACTION ===`);
   console.log(`Sources: ${sources.join(", ")} | Limit: ${limit}\n`);
 
+  // Atomically claim articles (prevents race with concurrent cron + scripts)
   const pending = await sql`
-    SELECT id, source_name, title, full_text, word_count
-    FROM articles
-    WHERE status = 'pending'
-      AND full_text IS NOT NULL
-      AND word_count > 100
-      AND source_name = ANY(${sources})
-    ORDER BY word_count DESC
-    LIMIT ${limit}
+    UPDATE articles
+    SET status = 'processing'
+    WHERE id IN (
+      SELECT id FROM articles
+      WHERE status = 'pending'
+        AND full_text IS NOT NULL
+        AND word_count > 100
+        AND source_name = ANY(${sources})
+      ORDER BY word_count DESC
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id, source_name, title, full_text, word_count
   `;
 
   console.log(`Found ${pending.length} pending articles.\n`);
