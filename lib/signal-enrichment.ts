@@ -235,7 +235,10 @@ async function fetchSparkline(
   const startIso = windowStart.toISOString();
   const endIso = windowEnd.toISOString();
 
-  const rows = (await sql`
+  // First try: this source only. If sparse, broaden to all sources on the
+  // same pair to give a sense of "the field's view" rather than a single
+  // analyst's stutter (avoids the 2-dot chart that prompted the redesign).
+  const ownSource = (await sql`
     SELECT a.published_at as date, c.direction
     FROM claims c
     JOIN articles a ON c.article_id = a.id
@@ -246,6 +249,26 @@ async function fetchSparkline(
     ORDER BY a.published_at ASC
     LIMIT 200
   `) as Array<{ date: string | null; direction: number }>;
+
+  let rows = ownSource;
+  // Need at least 5 day-distinct rows for a meaningful chart. Otherwise
+  // pull all sources on this pair so we surface the broader corpus trend
+  // instead of one source's two publications.
+  const distinctDays = new Set(
+    ownSource.filter((r) => r.date).map((r) => String(r.date).slice(0, 10))
+  );
+  if (distinctDays.size < 5) {
+    rows = (await sql`
+      SELECT a.published_at as date, c.direction
+      FROM claims c
+      JOIN articles a ON c.article_id = a.id
+      WHERE a.status = 'extracted'
+        AND ${ctx.pair} = ANY(c.pairs)
+        AND a.published_at BETWEEN ${startIso} AND ${endIso}
+      ORDER BY a.published_at ASC
+      LIMIT 500
+    `) as Array<{ date: string | null; direction: number }>;
+  }
 
   return rows
     .filter((r): r is { date: string; direction: number } => Boolean(r.date))

@@ -1031,7 +1031,62 @@ function cellTextColor(score: number | null): string {
   return score === 0 ? "rgb(var(--ink-3))" : "rgb(var(--ink-1))";
 }
 
-function Heatmap({
+function BucketCard({
+  cell,
+  active,
+  onClick,
+}: {
+  cell: HeatmapCell;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const score = cell.score;
+  const count = cell.count;
+  const hasData = score !== null && count > 0;
+  const bg = bucketCellColor(score);
+  // Direction-bar fill width
+  const barWidth = score === null ? 0 : Math.min(100, Math.abs(score)) / 2;
+  const barColor =
+    score === null ? "rgb(var(--ink-5))"
+    : score > 0 ? "rgb(var(--coop-1))"
+    : score < 0 ? "rgb(var(--conflict-1))"
+    : "rgb(var(--ink-4))";
+
+  return (
+    <div
+      className={`bucket-card${active ? " active" : ""}${hasData ? "" : " bucket-card-empty"}`}
+      onClick={onClick}
+      style={{ background: bg }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+    >
+      <div className="bucket-card-pair">{cell.pair}</div>
+      <div className="bucket-card-score" style={{ color: cellTextColor(score) }}>
+        {score === null ? "—" : (score > 0 ? "+" : "") + score}
+      </div>
+      <div className="bucket-card-bar-wrap">
+        {/* Centred direction bar showing magnitude + sign */}
+        <span className="bucket-card-bar-zero" />
+        <span
+          className="bucket-card-bar-fill"
+          style={{
+            background: barColor,
+            width: `${barWidth}%`,
+            ...(score !== null && score < 0
+              ? { right: "50%", left: "auto" }
+              : { left: "50%", right: "auto" }),
+          }}
+        />
+      </div>
+      <div className="bucket-card-count">
+        {count} claim{count !== 1 ? "s" : ""}
+      </div>
+    </div>
+  );
+}
+
+function BucketGrid({
   cells,
   activeFilter,
   onCellClick,
@@ -1041,71 +1096,61 @@ function Heatmap({
   onCellClick: (pair: string, bucket: string) => void;
 }) {
   return (
-    <div className="heatmap-wrap">
+    <div className="bucket-grid-wrap">
       <div className="tgfi-container">
-        <h2 className="heatmap-label">The pulse</h2>
-        <p className="heatmap-sub">
-          Average claim direction by pair × bucket over the past 120 days.
-          Click any cell to filter signals below.
-        </p>
-        <table className="heatmap-table">
-          <thead>
-            <tr>
-              <th></th>
-              {BUCKETS.map((b) => <th key={b}>{b}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {PAIRS.map((p) => (
-              <tr key={p}>
-                <th>{p}</th>
-                {BUCKETS.map((b) => {
-                  const cell = cells.find((c) => c.pair === p && c.bucket === b);
-                  const score = cell?.score ?? null;
-                  const count = cell?.count ?? 0;
-                  const active = activeFilter?.pair === p && activeFilter?.bucket === b;
-                  return (
-                    <td
-                      key={`${p}-${b}`}
-                      className={active ? "active" : ""}
-                      style={{
-                        background: bucketCellColor(score),
-                        color: cellTextColor(score),
-                      }}
-                      onClick={() => onCellClick(p, b)}
-                    >
-                      <span className="heatmap-cell-score">
-                        {score === null ? "—" : (score > 0 ? "+" : "") + score}
-                      </span>
-                      <span className="heatmap-cell-count">{count} claim{count !== 1 ? "s" : ""}</span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="bucket-grid-head">
+          <h2 className="bucket-grid-title">The matrix</h2>
+          <p className="bucket-grid-sub">
+            Claim-weighted direction for each bucket × bilateral pair over the
+            past 120 days. Click any card to filter signals to that cell.
+          </p>
+        </div>
+
+        {BUCKETS.map((bucket) => (
+          <section key={bucket} className="bucket-grid-row">
+            <header className="bucket-grid-row-head">
+              <span className="bucket-grid-row-name">{bucket}</span>
+              <span className="bucket-grid-row-rule" />
+            </header>
+            <div className="bucket-grid-row-cards">
+              {PAIRS.map((pair) => {
+                const cell = cells.find((c) => c.pair === pair && c.bucket === bucket) || {
+                  pair, bucket, score: null, count: 0,
+                };
+                const active =
+                  activeFilter?.pair === pair && activeFilter?.bucket === bucket;
+                return (
+                  <BucketCard
+                    key={`${bucket}-${pair}`}
+                    cell={cell}
+                    active={active}
+                    onClick={() => onCellClick(pair, bucket)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
         {activeFilter && (
-          <div style={{ marginTop: 16, fontSize: 12, color: "rgb(var(--ink-3))" }}>
-            Filtered to {activeFilter.pair} × {activeFilter.bucket}.{" "}
+          <div className="bucket-grid-filter-banner">
+            Filtered to <strong>{activeFilter.pair} × {activeFilter.bucket}</strong>.{" "}
             <button
               onClick={() => onCellClick("", "")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgb(var(--accent-1))",
-                cursor: "pointer",
-                textDecoration: "underline",
-                padding: 0,
-                fontSize: 12,
-              }}
-            >Clear filter</button>
+              className="bucket-grid-clear"
+            >
+              Clear filter
+            </button>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// Keep the old Heatmap component name as an alias so HomeClient continues
+// to mount the new BucketGrid via the existing call site.
+const Heatmap = BucketGrid;
 
 /* ─────────────────────────────────────────────────────────────
    Modal for compact-card expansion

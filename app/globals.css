@@ -751,7 +751,152 @@ a.dissenting-item-clickable:focus-visible {
   border-top: 1px solid rgb(var(--rule-1));
 }
 
-/* Heatmap (6 buckets x 3 pairs) */
+/* Bucket × pair card grid (replaces old heatmap; richer card layout) */
+.bucket-grid-wrap {
+  margin: 48px 0;
+  padding: 36px 0 28px;
+  border-top: 1px solid rgb(var(--rule-3));
+  border-bottom: 1px solid rgb(var(--rule-3));
+}
+.bucket-grid-head { margin-bottom: 24px; }
+.bucket-grid-title {
+  font-family: var(--font-playfair-display), Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+  color: rgb(var(--ink-1));
+}
+.bucket-grid-sub {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgb(var(--ink-3));
+  margin: 0;
+  max-width: 720px;
+}
+
+.bucket-grid-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 24px;
+  align-items: start;
+  padding: 16px 0;
+  border-top: 1px solid rgb(var(--rule-1));
+}
+.bucket-grid-row:first-of-type { border-top: none; }
+.bucket-grid-row-head {
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.bucket-grid-row-name {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgb(var(--ink-1));
+}
+.bucket-grid-row-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .bucket-grid-row { grid-template-columns: 1fr; gap: 8px; }
+  .bucket-grid-row-cards { grid-template-columns: 1fr; }
+}
+
+.bucket-card {
+  border: 1px solid rgb(var(--rule-1));
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.bucket-card:hover {
+  border-color: rgb(var(--ink-3));
+  transform: translateY(-1px);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+.bucket-card:focus-visible {
+  outline: 2px solid rgb(var(--accent-1));
+  outline-offset: 2px;
+}
+.bucket-card.active {
+  border-color: rgb(var(--accent-1));
+  box-shadow: 0 0 0 2px rgba(232, 80, 33, 0.18);
+}
+.bucket-card-empty {
+  opacity: 0.55;
+}
+.bucket-card-pair {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgb(var(--ink-2));
+}
+.bucket-card-score {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.bucket-card-bar-wrap {
+  position: relative;
+  height: 4px;
+  background: rgb(var(--rule-2));
+  border-radius: 2px;
+  margin: 4px 0 2px;
+}
+.bucket-card-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: rgb(var(--ink-3));
+}
+.bucket-card-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+.bucket-card-count {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  color: rgb(var(--ink-4));
+  letter-spacing: 0.04em;
+}
+
+.bucket-grid-filter-banner {
+  margin-top: 20px;
+  padding: 10px 14px;
+  background: rgb(var(--accent-2));
+  border: 1px solid rgba(232, 80, 33, 0.25);
+  border-radius: var(--r-2);
+  font-size: 13px;
+  color: rgb(var(--ink-2));
+}
+.bucket-grid-filter-banner strong { color: rgb(var(--ink-1)); }
+.bucket-grid-clear {
+  background: none;
+  border: none;
+  color: rgb(var(--accent-1));
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font: inherit;
+  margin-left: 8px;
+}
+
+/* Legacy heatmap classes kept for backward-compat in case any consumer uses them */
 .heatmap-wrap {
   margin: 48px 0;
   padding: 32px 0;
