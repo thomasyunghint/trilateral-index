@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /* ─────────────────────────────────────────────────────────────
    Types
@@ -1196,39 +1196,45 @@ const Heatmap = BucketGrid;
    ───────────────────────────────────────────────────────────── */
 
 function SignalModal({ signal, onClose }: { signal: SignalRow; onClose: () => void }) {
+  // ESC key dismisses; body scroll-lock while open
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(31, 35, 40, 0.5)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-        zIndex: 100,
-        overflowY: "auto",
-        padding: "32px 16px",
-      }}
+      className="signal-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Signal ${signal.rank} detail`}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 900, margin: "0 auto" }}
+        className="signal-modal-inner"
       >
-        <button
-          onClick={onClose}
-          style={{
-            background: "rgb(var(--paper-2))",
-            border: "1px solid rgb(var(--rule-1))",
-            padding: "8px 16px",
-            fontSize: 12,
-            cursor: "pointer",
-            marginBottom: 12,
-            fontFamily: "var(--font-jetbrains-mono), monospace",
-            letterSpacing: "0.05em",
-          }}
-        >
-          ✕ Close
-        </button>
+        <div className="signal-modal-toolbar">
+          <span className="signal-modal-hint">
+            Esc or click outside to close
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="signal-modal-close"
+            aria-label="Close signal detail"
+          >
+            ✕
+          </button>
+        </div>
         <SignalHero signal={signal} />
       </div>
     </div>
