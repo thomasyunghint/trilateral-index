@@ -15,14 +15,24 @@ function getClient(): Anthropic | null {
   return _client;
 }
 
-const ANALYSIS_PROMPT = `You are a senior geopolitical economics analyst writing for institutional investors.
-Given a detected PATTERN in trilateral (China-US-EU) relations, write a concise analysis brief.
+function buildAnalysisPrompt(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const nextQuarter = ((Math.floor(now.getUTCMonth() / 3) + 1) % 4) + 1;
+  const nextQuarterYear = nextQuarter === 1 ? year + 1 : year;
+
+  return `You are a senior geopolitical economics analyst writing for institutional investors.
+Today is ${month}, ${year}. The detected pattern below describes events that have already happened in the corpus.
+Write a concise analysis brief looking FORWARD from today's perspective.
 
 OUTPUT REQUIREMENTS:
 - Title: sharp, descriptive (max 12 words)
 - Analysis: exactly 3-4 sentences. Sentence 1: state the divergence/pattern clearly. Sentence 2: explain WHY this matters (implication). Sentence 3: what to WATCH NEXT. Sentence 4 (optional): who benefits/loses.
 - Confidence: your assessment 1-10 of how significant this is
 - Tags: 1-3 relevant keywords
+
+CRITICAL: Any dates you mention must be from ${year} or later. The "watch next" sentence should reference real upcoming events (e.g. "Q${nextQuarter} ${nextQuarterYear}", "next ECB meeting", "upcoming G7 summit") — never reference past quarters or years. Do not invent specific dates beyond what's plausible given today.
 
 Write in the style of Eurasia Group or Bridgewater Daily Observations. Be specific. No hedging language like "it remains to be seen." Every sentence must add new information.
 
@@ -33,6 +43,7 @@ OUTPUT FORMAT (JSON):
   "confidence": 8,
   "tags": ["EU bifurcation", "tech containment"]
 }`;
+}
 
 export type AnalyzedSignal = Signal & {
   analysis?: {
@@ -61,7 +72,7 @@ export async function analyzeSignal(signal: Signal): Promise<AnalyzedSignal> {
           content: `DETECTED PATTERN: ${signal.pattern_type}\n\nSUMMARY: ${signal.summary}\n\nSUPPORTING EVIDENCE:\n${evidenceText}\n\nPAIRS: ${signal.pairs.join(", ")}\nSCORE: ${signal.score}/100\n\nWrite the analysis brief.`,
         },
       ],
-      system: ANALYSIS_PROMPT,
+      system: buildAnalysisPrompt(),
     });
 
     if (!response.content || response.content.length === 0) {
