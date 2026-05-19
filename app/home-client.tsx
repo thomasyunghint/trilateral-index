@@ -1271,13 +1271,28 @@ export function HomeClient({
   function handleCellClick(pair: string, bucket: string) {
     if (!pair && !bucket) {
       setFilter(null);
+      // Return user to the top of the page when filter cleared so they see
+      // the full hero set again.
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     if (filter?.pair === pair && filter?.bucket === bucket) {
+      // Toggle off: same as clearing
       setFilter(null);
-    } else {
-      setFilter({ pair, bucket });
+      return;
     }
+    setFilter({ pair, bucket });
+    // Smooth-scroll to the heroes container so the user sees signals
+    // recompose after applying a filter. Use rAF + small delay so the
+    // React state update commits first.
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const heroContainer = document.querySelector(".tgfi-container");
+        if (heroContainer) {
+          heroContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
+    });
   }
 
   return (
