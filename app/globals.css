@@ -149,8 +149,17 @@ body {
   color: rgb(var(--ink-1));
   margin: 0;
 }
+.tgfi-masthead-tagline {
+  margin: 14px 0 0;
+  max-width: 720px;
+  font-family: var(--font-playfair-display), Georgia, serif;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+}
 .tgfi-masthead-meta {
-  margin-top: 16px;
+  margin-top: 18px;
   display: flex;
   align-items: baseline;
   gap: 16px;

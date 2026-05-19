@@ -184,11 +184,16 @@ function Masthead({ stats }: { stats: StatsBlock }) {
         <h1 className="tgfi-masthead-title">
           Trilateral Geoeconomic Fragmentation Index
         </h1>
+        <p className="tgfi-masthead-tagline">
+          A rule-based detection engine that surfaces direction reversals,
+          expert disagreements, and cross-bucket divergences across China&ndash;US&ndash;EU
+          economic and political analysis from {stats.sources}&nbsp;leading think tanks.
+        </p>
         <div className="tgfi-masthead-meta">
           <span><span className="live-dot" />Live monitoring</span>
           <span>As of {today}</span>
           <span>Last ingest {formatRelativeTime(stats.lastIngest)}</span>
-          <span>{stats.claims.toLocaleString()} claims · {stats.sources} sources</span>
+          <span>{stats.claims.toLocaleString()} claims &middot; {stats.signals} active signals</span>
         </div>
       </div>
     </header>
