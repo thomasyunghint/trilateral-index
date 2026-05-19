@@ -1192,9 +1192,6 @@ function BucketGrid({
   );
 }
 
-// Keep the old Heatmap component name as an alias so HomeClient continues
-// to mount the new BucketGrid via the existing call site.
-const Heatmap = BucketGrid;
 
 /* ─────────────────────────────────────────────────────────────
    Modal for compact-card expansion
@@ -1341,8 +1338,7 @@ export function HomeClient({
         {top3.map((s) => <SignalHero key={s.id} signal={s} />)}
       </div>
 
-      {!filter && <Heatmap cells={heatmap} activeFilter={filter} onCellClick={handleCellClick} />}
-      {filter && <Heatmap cells={heatmap} activeFilter={filter} onCellClick={handleCellClick} />}
+      <BucketGrid cells={heatmap} activeFilter={filter} onCellClick={handleCellClick} />
 
       {rest.length > 0 && (
         <div className="tgfi-container">
